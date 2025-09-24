@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.json": "cpp",
+        "wifi.h": "c",
+        "esp_netif.h": "c"
+    }
+}

@@ -3,14 +3,27 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "board.h"
+#include "wifi.h"
 #include "log.h"
+#include "netif.h"
 
 static const char *TAG = "BOARD";
 
 __attribute__((weak)) esp_err_t master_init()
 {
+    esp_err_t err = ESP_OK;
+
+    err = network_interface_init();
+    ESP_RETURN_ON_ERROR(err, TAG, "netif_init");
+
+    err = wifi_init_apsta();
+    ESP_RETURN_ON_ERROR(err, TAG, "wifi_init_apsta");
+
+    err = wifi_start_softap();
+    ESP_RETURN_ON_ERROR(err, TAG, "wifi_start_softap");
+
     log_message(LOG_LEVEL_INFO, TAG, "Master board initialized.\n");
-    return ESP_OK;
+    return err;
 }
 
 __attribute__((weak)) esp_err_t slave_one_init()
@@ -40,6 +53,9 @@ esp_err_t board_init(void)
         err = nvs_flash_init();
     }
     ESP_RETURN_ON_ERROR(err, TAG, "nvs_flash_init");
+
+    err = esp_event_loop_create_default();
+    ESP_RETURN_ON_ERROR(err, TAG, "esp_event_loop_create_default");
 
 #if defined(BOARD_MASTER)
     return master_init();
