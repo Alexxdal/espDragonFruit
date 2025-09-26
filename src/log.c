@@ -2,7 +2,7 @@
 #include <esp_log.h>
 #include "log.h"
 
-static log_level_t current_log_level = LOG_LEVEL_INFO;
+static log_level_t current_log_level = LOG_LEVEL_DEBUG;
 
 void log_set_level(log_level_t level) {
     current_log_level = level;

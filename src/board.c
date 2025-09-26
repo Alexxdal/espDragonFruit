@@ -3,6 +3,7 @@
 #include <esp_log.h>
 #include "esp_check.h"
 #include "board.h"
+#include "spi.h"
 #include "wifi.h"
 #include "log.h"
 #include "netif.h"
@@ -53,6 +54,9 @@ esp_err_t board_init(void)
 
     err = esp_event_loop_create_default();
     ESP_RETURN_ON_ERROR(err, TAG, "esp_event_loop_create_default");
+
+    err = spi_init();
+    ESP_RETURN_ON_ERROR(err, TAG, "spi_init");
 
 #if defined(BOARD_MASTER)
     return master_init();

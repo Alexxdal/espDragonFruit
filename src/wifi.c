@@ -1,3 +1,4 @@
+#include <string.h>
 #include <esp_log.h>
 #include "wifi.h"
 #include "log.h"

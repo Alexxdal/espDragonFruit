@@ -11,8 +11,19 @@ typedef enum {
     LOG_LEVEL_VERBOSE
 } log_level_t;
 
+/**
+ * @brief Set the current logging level.
+ */
 void log_set_level(log_level_t level);
+
+/**
+ * @brief Get the current logging level.
+ */
 log_level_t log_get_level();
+
+/**
+ * @brief Log a message with a specific log level and tag.
+ */
 void log_message(log_level_t level, const char *tag, const char *format, ...);
 
 

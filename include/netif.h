@@ -9,17 +9,14 @@
  */
 bool getNetIfStatus(void);
 
-
 /**
  * @breif Initialize the network interface.
  */
 esp_err_t network_interface_init(void);
 
-
 /**
  * @brief Deinitialize the network interface.
  */
 esp_err_t network_interface_deinit(void);
-
 
 #endif // NETIF_H

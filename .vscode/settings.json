@@ -4,6 +4,10 @@
         "wifi.h": "c",
         "esp_netif.h": "c",
         "nvs_config.h": "c",
-        "nvs_flash.h": "c"
+        "nvs_flash.h": "c",
+        "spi_master.h": "c",
+        "spi.h": "c",
+        "board.h": "c",
+        "esp_err.h": "c"
     }
 }
