@@ -2,6 +2,8 @@
     "files.associations": {
         "*.json": "cpp",
         "wifi.h": "c",
-        "esp_netif.h": "c"
+        "esp_netif.h": "c",
+        "nvs_config.h": "c",
+        "nvs_flash.h": "c"
     }
 }
