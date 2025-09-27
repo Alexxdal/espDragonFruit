@@ -8,6 +8,9 @@
         "spi_master.h": "c",
         "spi.h": "c",
         "board.h": "c",
-        "esp_err.h": "c"
+        "esp_err.h": "c",
+        "esp_check.h": "c",
+        "log.h": "c",
+        "task.h": "c"
     }
 }

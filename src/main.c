@@ -6,6 +6,7 @@
 
 // Boards Init Header
 #include "board.h"
+#include "spi.h"
 
 void app_main() 
 {

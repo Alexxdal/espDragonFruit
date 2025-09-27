@@ -21,6 +21,7 @@ static const spi_bus_config_t s_bus = {
   .max_transfer_sz = 4069
 };
 
+static TaskHandle_t spi_pool_task_handle;
 
 #if defined(BOARD_MASTER)
 static spi_device_handle_t s_dev[3];
@@ -29,6 +30,42 @@ static const int s_cs[3] = { SPI_S1_CS, SPI_S2_CS, SPI_S3_CS };
 static spi_slave_transaction_t s_t;
 static bool s_ready = false; 
 #endif
+
+
+static void spi_pool_task(void *pvParameters)
+{
+    (void)pvParameters;
+    esp_err_t err = ESP_OK;
+
+    #if defined(BOARD_MASTER)
+    size_t rx_got = 0;
+    while (1) 
+    {
+        for (int i=0; i<3; i++) 
+        {
+            err = spi_poll(i, portMAX_DELAY, &rx_got);
+            if (err == ESP_OK && rx_got > 0) 
+            {
+                log_message(LOG_LEVEL_INFO, TAG, "Received %d bytes from slave %d", rx_got, i);
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    #elif defined(BOARD_SLAVE1) || defined(BOARD_SLAVE2) || defined(BOARD_SLAVE3)
+    size_t rx_got = 0;
+    while (1) 
+    {
+        err = spi_poll(0, portMAX_DELAY, &rx_got);
+        if (err == ESP_OK && rx_got > 0) 
+        {
+            log_message(LOG_LEVEL_INFO, TAG, "Received %d bytes from master", rx_got);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    #endif
+    vTaskDelete(NULL);
+}
 
 
 esp_err_t spi_init(void)
@@ -48,11 +85,19 @@ esp_err_t spi_init(void)
         log_message(LOG_LEVEL_DEBUG, TAG, "Added SPI slave: %d", i);
     }
     #elif defined(BOARD_SLAVE1) || defined(BOARD_SLAVE2) || defined(BOARD_SLAVE3)
-    spi_slave_interface_config_t cfg = { .mode=0, .spics_io_num = SPI_CS, .queue_size = 1 };
+    spi_slave_interface_config_t cfg = 
+    { 
+        .mode=0,
+        .spics_io_num = SPI_CS,
+        .queue_size = 4 
+    };
     ESP_RETURN_ON_ERROR(spi_slave_initialize(SPI_HOST_TARGET, &s_bus, &cfg, SPI_DMA_CH_AUTO), TAG, "slave");
     memset(&s_t, 0, sizeof(s_t));
     #endif
-    
+
+    /* Start SPI Pool Task */
+    xTaskCreate(spi_pool_task, "spi_pool_task", 2048, NULL, 5, &spi_pool_task_handle);
+
     log_message(LOG_LEVEL_INFO, TAG, "SPI Initialized.");
     return ESP_OK;
 }
