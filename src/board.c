@@ -3,7 +3,7 @@
 #include <esp_log.h>
 #include "esp_check.h"
 #include "board.h"
-#include "spi.h"
+#include "i2c_proto.h"
 #include "wifi.h"
 #include "log.h"
 #include "netif.h"
@@ -55,19 +55,22 @@ esp_err_t board_init(void)
     err = esp_event_loop_create_default();
     ESP_RETURN_ON_ERROR(err, TAG, "esp_event_loop_create_default");
 
-    err = spi_init();
-    ESP_RETURN_ON_ERROR(err, TAG, "spi_init");
+    err = i2c_init();
+    ESP_RETURN_ON_ERROR(err, TAG, "i2c_init");
 
 #if defined(BOARD_MASTER)
     return master_init();
 
 #elif defined(BOARD_SLAVE1)
+    xTaskCreate(i2c_slave_task, "i2c_slave", 4096, NULL, 5, NULL);
     return slave_one_init();
 
 #elif defined(BOARD_SLAVE2)
+    xTaskCreate(i2c_slave_task, "i2c_slave", 4096, NULL, 5, NULL);
     return slave_two_init();
 
 #elif defined(BOARD_SLAVE3)
+    xTaskCreate(i2c_slave_task, "i2c_slave", 4096, NULL, 5, NULL);
     return slave_three_init();
 
 #else

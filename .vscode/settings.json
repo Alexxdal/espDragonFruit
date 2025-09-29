@@ -11,6 +11,9 @@
         "esp_err.h": "c",
         "esp_check.h": "c",
         "log.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "i2c_master.h": "c",
+        "freertos.h": "c",
+        "i2c_proto.h": "c"
     }
 }
