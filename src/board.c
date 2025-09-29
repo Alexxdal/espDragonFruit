@@ -4,6 +4,7 @@
 #include "esp_check.h"
 #include "board.h"
 #include "spi.h"
+#include "spi_protocol.h"
 #include "wifi.h"
 #include "log.h"
 #include "netif.h"
@@ -57,6 +58,10 @@ esp_err_t board_init(void)
 
     err = spi_init();
     ESP_RETURN_ON_ERROR(err, TAG, "spi_init");
+
+    err = spi_protocol_init();
+    ESP_RETURN_ON_ERROR(err, TAG, "spi_protocol_init");
+
 
 #if defined(BOARD_MASTER)
     return master_init();

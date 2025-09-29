@@ -1,32 +1,58 @@
 #ifndef SPI_PROTOCOL_H
 #define SPI_PROTOCOL_H
 
+
 #include <esp_system.h>
+#include <stddef.h>
+#include <stdint.h>
+#include "esp_err.h"
 
-#define SPI_START_BYTE 0xAA
-#define SPI_MAX_PAYLOAD_SIZE 512
 
-typedef struct {
-    uint8_t start_byte;   // Start byte (e.g., 0xAA)
-    uint8_t command;      // Command identifier
-    uint16_t length;      // Length of the payload
-    uint16_t checksum;     // 16Bit checksum (CRC-16)
+#define SPI_START_BYTE 0xA5
+#define SPI_MAX_PAYLOAD_SIZE 256
+
+
+#if defined(BOARD_MASTER)
+#define EP_MAX 3
+#else
+#define EP_MAX 1
+#endif
+
+
+typedef enum {
+    SPI_CMD_PING = 0x01,
+    SPI_CMD_WIFI_ON = 0x02,
+    SPI_CMD_WIFI_SCAN = 0x03,
+    SPI_RSP_PONG = SPI_CMD_PING | 0x80, // 0x81
+    SPI_RSP_WIFI_ON_ACK = SPI_CMD_WIFI_ON | 0x80, // 0x82
+    SPI_RSP_WIFI_SCAN = SPI_CMD_WIFI_SCAN | 0x80, // 0x83
+} spi_cmd_t;
+
+
+// Header del frame (packed)
+typedef struct __attribute__((packed)) 
+{
+    uint8_t start_byte;
+    uint8_t command;
+    uint16_t length;
+    uint16_t checksum;
 } frame_header_t;
 
-typedef struct {
+
+// Frame completo
+typedef struct __attribute__((packed)) 
+{
     frame_header_t header;
     uint8_t payload[SPI_MAX_PAYLOAD_SIZE];
 } spi_frame_t;
 
 
-/**
- * @brief Calculate a simple checksum (CRC-16) for the given data.
- * 
- * @param data Pointer to the data buffer.
- * @param length Length of the data buffer.
- * @return uint16_t Calculated CRC-16 checksum.
- */
-uint16_t calculate_checksum(const uint8_t *data, size_t length);
+uint16_t spi_crc16(const uint8_t *data, size_t length);
 
+esp_err_t spi_protocol_init(void);
+
+esp_err_t spi_send_frame(int ep, uint8_t command, const uint8_t *payload, uint16_t length);
+
+esp_err_t spi_try_recv_frame(int ep, TickType_t to, spi_frame_t *out, size_t *rx_len);
 
 #endif // SPI_PROTOCOL_H

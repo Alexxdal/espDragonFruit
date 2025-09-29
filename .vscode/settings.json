@@ -11,6 +11,11 @@
         "esp_err.h": "c",
         "esp_check.h": "c",
         "log.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "spi_protocol.h": "c",
+        "numbers": "c",
+        "spi_slave.h": "c",
+        "freertos.h": "c",
+        "string.h": "c"
     }
 }
