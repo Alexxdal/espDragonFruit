@@ -27,18 +27,18 @@ void app_main()
     while (1) 
     {
         #if defined(BOARD_MASTER)
+        i2c_frame_t frame = { 0 };
         int addr = i2c_hasSlaveData();
         if (addr) {
-            uint8_t buf[64];
-            uint8_t len = 0;
-            if (i2c_recv_resp(addr, buf, sizeof(buf), &len, pdMS_TO_TICKS(200)) == ESP_OK) {
-                buf[len] = 0; // termina stringa
-                log_message(LOG_LEVEL_INFO, TAG, "RX from slave 0x%02X: %s", addr, (char*)buf);
+            if (i2c_recv_frame(SLAVE1_ADDR, &frame, pdMS_TO_TICKS(100)) == ESP_OK) {
+                log_message(LOG_LEVEL_INFO, TAG, "RX from slave 0x%02X: %s", addr, (char*)frame.payload);
             }
         }
-
+        i2c_frame_t cmd = {
+            .header.cmd = CMD_PING
+        };
         log_message(LOG_LEVEL_INFO, TAG, "Send PING to slave1");
-        i2c_send_cmd(SLAVE1_ADDR, CMD_PING, (const uint8_t*)"hello", 5, pdMS_TO_TICKS(200));
+        i2c_send_frame(SLAVE1_ADDR, &cmd, pdMS_TO_TICKS(100));
         #endif
         vTaskDelay(pdMS_TO_TICKS(1000));
     }

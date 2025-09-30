@@ -4,156 +4,114 @@
 #include "esp_log.h"
 #include "esp_check.h"
 
+#include "log.h"
 #include "i2c.h"
 #include "i2c_proto.h"
 
 static const char *TAG = "I2C_PROTO";
 
-/* ========================= MASTER SIDE ========================= */
-
 #if defined(BOARD_MASTER)
-
-esp_err_t i2c_send_cmd(uint8_t addr, uint8_t cmd, const uint8_t *payload, uint8_t len, TickType_t to)
+esp_err_t i2c_send_frame(uint8_t addr, i2c_frame_t *frame, TickType_t to)
 {
-    if (len > I2C_MAX_PAYLOAD) return ESP_ERR_INVALID_SIZE;
-
-    uint8_t buf[2 + I2C_MAX_PAYLOAD];
-    buf[0] = cmd;
-    buf[1] = len;
-    if (len && payload) memcpy(&buf[2], payload, len);
-
-    esp_err_t e = i2c_write_to(addr, buf, (size_t)(2 + len), to);
-    if (e != ESP_OK) {
-        ESP_LOGW(TAG, "send_cmd addr=0x%02X cmd=0x%02X len=%u -> err=%d", addr, cmd, (unsigned)len, e);
+    /* Check len */
+    if(frame->header.len > I2C_MAX_PAYLOAD)
+        return ESP_ERR_INVALID_SIZE;
+    /* Check CRC */
+    //Skip for now
+    esp_err_t err = i2c_write_to(addr, (const uint8_t *)frame, sizeof(i2c_header_t) + frame->header.len, to);
+    if (err != ESP_OK) 
+    {
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to send i2c frame cmd=%02X err=%s", frame->header.cmd, esp_err_to_name(err));
+        return err;
     }
-    return e;
-}
-
-esp_err_t i2c_recv_resp(uint8_t addr, uint8_t *buf, uint8_t bufsize, uint8_t *out_len, TickType_t to)
-{
-    // Legge prima l'header (echo_cmd, len), poi il payload se len>0
-    uint8_t hdr[2] = {0};
-    esp_err_t e = i2c_read_from(addr, hdr, 2, to);
-    if (e != ESP_OK) {
-        ESP_LOGW(TAG, "recv_resp hdr addr=0x%02X -> err=%d", addr, e);
-        return e;
-    }
-
-    uint8_t rlen = hdr[1];
-    if (rlen > bufsize) {
-        ESP_LOGE(TAG, "recv_resp len overflow: rlen=%u > bufsize=%u", rlen, bufsize);
-        return ESP_ERR_NO_MEM;
-    }
-
-    if (rlen) {
-        e = i2c_read_from(addr, buf, rlen, to);
-        if (e != ESP_OK) {
-            ESP_LOGW(TAG, "recv_resp payload addr=0x%02X len=%u -> err=%d", addr, rlen, e);
-            return e;
-        }
-    }
-    if (out_len) *out_len = rlen;
-
-    ESP_LOGD(TAG, "recv_resp OK addr=0x%02X echo_cmd=0x%02X len=%u", addr, hdr[0], rlen);
     return ESP_OK;
 }
 
-#endif /* BOARD_MASTER */
-
-/* ========================= SLAVE SIDE ========================= */
-
-#if defined(BOARD_SLAVE1) || defined(BOARD_SLAVE2) || defined(BOARD_SLAVE3)
-
-// Buffer TX condiviso (driver slave lo copia internamente)
-static uint8_t s_tx_buf[2 + I2C_MAX_PAYLOAD];
-
-static inline void make_resp(uint8_t cmd, const uint8_t *payload, uint8_t len)
+esp_err_t i2c_recv_frame(uint8_t addr, i2c_frame_t *frame, TickType_t to)
 {
-    if (len > I2C_MAX_PAYLOAD) len = I2C_MAX_PAYLOAD;
-    s_tx_buf[0] = (uint8_t)(cmd | 0x80);
-    s_tx_buf[1] = len;
-    if (len && payload) memcpy(&s_tx_buf[2], payload, len);
+    esp_err_t err = i2c_read_from(addr, (uint8_t *)&frame->header, sizeof(i2c_header_t), to);
+    if(err != ESP_OK)
+    {
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to read i2c frame.. err=%s", esp_err_to_name(err));
+        return err;
+    }
+    if(frame->header.len > 0)
+    {
+        err = i2c_read_from(addr, frame->payload, frame->header.len, to);
+        if(err != ESP_OK)
+        {
+            log_message(LOG_LEVEL_ERROR, TAG, "Failed to read i2c frame.. err=%s", esp_err_to_name(err));
+            return err;
+        }
+    }
+    /* CRC Check */
+    return ESP_OK;
 }
-
-static void handle_command(const uint8_t *rx, int n)
+#endif 
+static i2c_frame_t * handle_command(const i2c_frame_t *frame)
 {
-    if (n < 2) {
-        // frame minimo non valido
-        make_resp(0x7F, NULL, 0);
-        return;
-    }
-    const uint8_t cmd = rx[0];
-    const uint8_t len = rx[1];
-
-    if ((int)(2 + len) > n || len > I2C_MAX_PAYLOAD) {
-        // lunghezza incoerente
-        make_resp(0x7E, NULL, 0);
-        return;
-    }
-
-    const uint8_t *pl = &rx[2];
-
-    switch (cmd) {
+    static i2c_frame_t response = { 0 };
+    switch (frame->header.cmd) {
         case CMD_PING: {
-            static const char pong[] = "PONG";
-            make_resp(CMD_PING, (const uint8_t*)pong, sizeof(pong));
+            response.header.cmd = CMD_PONG;
+            response.header.len = 0;
+            response.header.crc = 0;
             break;
         }
         case CMD_WIFI_ON: {
             // TODO: accendi davvero il Wi-Fi qui (non bloccare!)
-            make_resp(CMD_WIFI_ON, NULL, 0);
+            //make_resp(CMD_WIFI_ON, NULL, 0);
             break;
         }
         case CMD_WIFI_SCAN: {
             // TODO: lancia una scansione vera in task separato; qui demo
-            static const char demo[] = "ssid:demo,rssi:-42";
-            make_resp(CMD_WIFI_SCAN, (const uint8_t*)demo, sizeof(demo));
+            //static const char demo[] = "ssid:demo,rssi:-42";
+            //make_resp(CMD_WIFI_SCAN, (const uint8_t*)demo, sizeof(demo));
             break;
         }
         default: {
-            make_resp(0x00, NULL, 0);  // comando sconosciuto
+            //make_resp(0x00, NULL, 0);  // comando sconosciuto
             break;
         }
     }
+
+    return &response;
 }
+
+#if defined(BOARD_SLAVE1) || defined(BOARD_SLAVE2) || defined(BOARD_SLAVE3)
 
 void i2c_slave_task(void *arg)
 {
     (void)arg;
-    uint8_t rx[2 + I2C_MAX_PAYLOAD] = { 0 };
-
-    // All'avvio non abbiamo nulla da dire: DRDY idle (alto se active-low)
+    i2c_frame_t frame = { 0 };
     i2c_drdy_clear();
 
-    for (;;) {
-        // 1) Attendi un frame in ingresso dal master (WRITE del master)
-        //    Timeout 1000 ms per evitare lock perenne
-        int n = i2c_slave_read_buffer(I2C_PORT, rx, sizeof(rx), pdMS_TO_TICKS(1000));
-        if (n <= 0) {
-            // niente ricevuto in finestra: loop
+    while (1) 
+    {
+        esp_err_t n = i2c_slave_read_buffer(I2C_PORT, (uint8_t *)&frame, sizeof(i2c_frame_t), pdMS_TO_TICKS(50));
+        if (n <= 0) 
+        {
             continue;
         }
-
-        // Abbassa DRDY a idle (alto) quando arriva un nuovo comando:
-        // così, se il master non ha fatto ancora la READ precedente, non restiamo "pronti" per sempre.
+        /* Incomplete Frame */
+        if(n != frame.header.len + sizeof(i2c_header_t))
+        {
+            continue;
+        }
+        
         i2c_drdy_clear();
+        i2c_frame_t *response = handle_command(&frame);
+        if(!response)
+            continue;
 
-        // 2) Elabora il comando e prepara la risposta nel buffer TX
-        handle_command(rx, n);
-
-        // 3) Esponi la risposta allo slave driver (verrà servita alla prossima READ del master)
-        size_t tx_len = (size_t)(2 + s_tx_buf[1]);
-        esp_err_t e = i2c_slave_write_buffer(I2C_PORT, s_tx_buf, tx_len, pdMS_TO_TICKS(1000));
-        if (e <= 0) {
-            // Se non scrive, ritenta al prossimo giro
-            ESP_LOGW(TAG, "slave_write_buffer failed (%d), tx_len=%u", e, (unsigned)tx_len);
+        n = i2c_slave_write_buffer(I2C_PORT, (const uint8_t *)response, sizeof(i2c_header_t) + response->header.len, pdMS_TO_TICKS(50));
+        if (n <= 0) 
+        {
+            log_message(LOG_LEVEL_ERROR, TAG, "slave_write_buffer failed");
             continue;
         }
 
-        // 4) Segnala al master che i dati sono pronti (active-low → 0 = ready)
         i2c_drdy_ready();
-        // DRDY tornerà a idle alla prossima ricezione comando (vedi inizio ciclo)
     }
 }
-
 #endif /* any SLAVE */

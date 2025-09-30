@@ -8,15 +8,29 @@
 #include "freertos/FreeRTOS.h"
 
 typedef enum {
-  CMD_PING      = 0x01,
-  CMD_WIFI_ON   = 0x02,
-  CMD_WIFI_SCAN = 0x03,
+    CMD_PING = 0x01,
+    CMD_PONG,
+    CMD_WIFI_ON,
+    CMD_WIFI_SCAN
 } i2c_cmd_t;
 
 #define I2C_MAX_PAYLOAD  128
 
-esp_err_t i2c_send_cmd(uint8_t addr, uint8_t cmd, const uint8_t *payload, uint8_t len, TickType_t to);
-esp_err_t i2c_recv_resp(uint8_t addr, uint8_t *buf, uint8_t bufsize, uint8_t *out_len, TickType_t to);
+typedef struct __attribute((packed)) {
+    uint8_t cmd;
+    uint16_t len;
+    uint8_t crc;
+} i2c_header_t;
+
+typedef struct __attribute((packed)) {
+    i2c_header_t header;
+    uint8_t payload[I2C_MAX_PAYLOAD - sizeof(i2c_header_t)];
+} i2c_frame_t;
+
+
+esp_err_t i2c_send_frame(uint8_t addr, i2c_frame_t *frame, TickType_t to);
+
+esp_err_t i2c_recv_frame(uint8_t addr, i2c_frame_t *frame, TickType_t to);
 
 void i2c_slave_task(void *arg);
 
