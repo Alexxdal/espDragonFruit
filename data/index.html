@@ -6,19 +6,14 @@
     </head>
     <body>
         <!-- SCRIPTS -->
-        <script src="js/index.js"></script>
+        <script src="js/index.js" defer></script>
+        <script src="js/test.js" defer></script>
         <!-- ROOT CONTAINER -->
         <div class="root-ctn">
             <div class="title-row">Dragonfruit v0.0.0</div>
             <div class="root-sub-ctn">
                 <!-- LEFT BAR -->
                 <div class="left-bar">
-                    <a href="./index.html" class="btn selected">
-                        <img src="./assets/gauge-solid-full.svg"></img>
-                    </a>
-                    <a href="" class="btn"></a>
-                    <a href="" class="btn"></a>
-                    <a href="" class="btn"></a>
                 </div>
 
                 <!-- MAIN CONTAINER -->
@@ -31,7 +26,7 @@
                     <div class="full-width-row">
                         <div class="card">
                             <div class="title">System Status</div>
-                            <div class="data">
+                            <div id="cpu-data" class="data">
                                 <div class="cnt-status-data">
                                     <div class="value" >100%</div>
                                     <div class="val-title">CPU</div>
