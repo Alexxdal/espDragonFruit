@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <esp_log.h>
+#include "freertos/FreeRTOS.h"
 #include "log.h"
 
-static log_level_t current_log_level = LOG_LEVEL_DEBUG;
+static log_level_t current_log_level = LOG_LEVEL_VERBOSE;
 
 void log_set_level(log_level_t level) {
     current_log_level = level;
@@ -12,7 +13,13 @@ log_level_t log_get_level() {
     return current_log_level;
 }
 
-void log_message(log_level_t level, const char *tag, const char *format, ...) {
+void log_message(log_level_t level, const char *tag, const char *format, ...) 
+{    
+    /* TODO: Do not direct printf in ISR, do a queue */
+    if (xPortInIsrContext()) {
+        return;
+    }
+
     if (level > current_log_level || level == LOG_LEVEL_NONE) {
         return;
     }

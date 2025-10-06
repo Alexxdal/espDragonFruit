@@ -14,7 +14,8 @@ typedef enum {
     CMD_WIFI_SCAN
 } i2c_cmd_t;
 
-#define I2C_MAX_PAYLOAD  128
+#define I2C_MAX_PAYLOAD     128
+#define CMD_QUEUE_SIZE      16
 
 typedef struct __attribute((packed)) {
     uint8_t cmd;
@@ -27,11 +28,18 @@ typedef struct __attribute((packed)) {
     uint8_t payload[I2C_MAX_PAYLOAD - sizeof(i2c_header_t)];
 } i2c_frame_t;
 
+esp_err_t i2c_proto_init(void);
 
 esp_err_t i2c_send_frame(uint8_t addr, i2c_frame_t *frame, TickType_t to);
 
 esp_err_t i2c_recv_frame(uint8_t addr, i2c_frame_t *frame, TickType_t to);
 
-void i2c_slave_task(void *arg);
+void i2c_slave_rx_task(void *arg);
+
+void slave_cmd_handle_task(void *arg);
+
+void i2c_master_rx_task(void *arg);
+
+void master_cmd_handel_task(void *arg);
 
 #endif // I2C_PROTO_H

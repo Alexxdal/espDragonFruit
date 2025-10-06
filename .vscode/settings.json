@@ -14,6 +14,9 @@
         "task.h": "c",
         "i2c_master.h": "c",
         "freertos.h": "c",
-        "i2c_proto.h": "c"
+        "i2c_proto.h": "c",
+        "queue.h": "c",
+        "cstdint": "c",
+        "i2c.h": "c"
     }
 }

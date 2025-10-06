@@ -49,31 +49,27 @@ __attribute__((weak)) esp_err_t slave_three_init()
 
 esp_err_t board_init(void)
 {
-    esp_err_t err = nvs_init();
-    ESP_RETURN_ON_ERROR(err, TAG, "nvs_init");
-
-    err = esp_event_loop_create_default();
-    ESP_RETURN_ON_ERROR(err, TAG, "esp_event_loop_create_default");
-
-    err = i2c_init();
-    ESP_RETURN_ON_ERROR(err, TAG, "i2c_init");
+    ESP_ERROR_CHECK(nvs_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
 #if defined(BOARD_MASTER)
-    return master_init();
+    ESP_ERROR_CHECK(master_init());
 
 #elif defined(BOARD_SLAVE1)
-    xTaskCreate(i2c_slave_task, "i2c_slave", 4096, NULL, 5, NULL);
-    return slave_one_init();
+    ESP_ERROR_CHECK(slave_one_init());
 
 #elif defined(BOARD_SLAVE2)
-    xTaskCreate(i2c_slave_task, "i2c_slave", 4096, NULL, 5, NULL);
-    return slave_two_init();
+    ESP_ERROR_CHECK(slave_two_init());
 
 #elif defined(BOARD_SLAVE3)
-    xTaskCreate(i2c_slave_task, "i2c_slave", 4096, NULL, 5, NULL);
-    return slave_three_init();
+    ESP_ERROR_CHECK(slave_three_init());
 
 #else
 #   error "Define exactly one of: BOARD_MASTER, BOARD_SLAVE1, BOARD_SLAVE2, BOARD_SLAVE3"
 #endif
+
+    ESP_ERROR_CHECK(i2c_init());
+    ESP_ERROR_CHECK(i2c_proto_init());
+
+    return ESP_OK;
 }
