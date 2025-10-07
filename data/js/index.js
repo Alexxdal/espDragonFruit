@@ -3,7 +3,7 @@ import testRender from "./test.js"
 let diagnostic = `
 <!-- LOGO -->
 <div class="full-width-row">
-    <img class="logo" src="./assets/espDragonFruit_logo.svg"></img>
+    <img class="logo" src="/assets/logo.svg"></img>
 </div>
 <!-- DIAGNOSTIC -->
 <div class="full-width-row">
@@ -118,7 +118,7 @@ function appendNewLeftbarButton(iconUrl){
  * General initializer
  */
 function init(){
-    setupLeftBar(["./assets/gauge-solid-full.svg", "./assets/flask-vial-solid-full.svg"]);
+    setupLeftBar(["/assets/gauge.svg", "/assets/flask-vial.svg"]);
     renderNewPage(0);
     testRender();
 }

@@ -60,7 +60,7 @@ static proto_frame_t *handle_frame(const proto_frame_t *frame)
 esp_err_t proto_send_frame(int slave_addr, proto_frame_t *frame)
 {
     frame->header.addr = slave_addr;
-    if(xQueueSend(tx_frame_queue, frame, 10) != pdTRUE)
+    if(xQueueSend(tx_frame_queue, frame, 50) != pdTRUE)
     {
         log_message(LOG_LEVEL_DEBUG, TAG, "Failed to add frame to queue");
         return ESP_ERR_NO_MEM;

@@ -22,6 +22,7 @@
         "spi_common.h": "c",
         "spi_proto.h": "c",
         "format": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "esp_spiffs.h": "c"
     }
 }

@@ -9,6 +9,11 @@
 #include "netif.h"
 #include "nvs_config.h"
 
+#if defined(BOARD_MASTER)
+#include "esp_spiffs.h"
+#include "httpd.h"
+#endif
+
 static const char *TAG = "BOARD";
 
 __attribute__((weak)) esp_err_t master_init()
@@ -23,6 +28,17 @@ __attribute__((weak)) esp_err_t master_init()
 
     err = wifi_start_softap();
     ESP_RETURN_ON_ERROR(err, TAG, "wifi_start_softap");
+
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = "/spiffs",
+        .partition_label = "spiffs",
+        .max_files = 15,
+        .format_if_mount_failed = false
+    };
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
+
+    err = httpd_server_start();
+    ESP_RETURN_ON_ERROR(err, TAG, "httpd_server_start");
 
     log_message(LOG_LEVEL_INFO, TAG, "Master board initialized.\n");
     return err;
