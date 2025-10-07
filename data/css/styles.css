@@ -108,10 +108,10 @@
 
 .card{
     background-color: white;
-    border-bottom: solid 4px lightgray;
-    border-left: solid 1px lightgray;
-    border-right: solid 1px lightgray;
     border-top: solid 1px lightgray;
+    border-bottom: solid 4px lightgray;
+    border-right: solid 1px lightgray;
+    border-left: solid 1px lightgray;
     border-radius: 10px;
     display: flex;
     flex-direction: column;

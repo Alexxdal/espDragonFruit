@@ -2,7 +2,7 @@
  * Mock function
  */
 
-async function testRender(){
+export default async function testRender(){
 
     let target = document.getElementById("cpu-data");
     let innerTarget = target.querySelector("div");
@@ -14,5 +14,3 @@ async function testRender(){
         innerTarget2.innerHTML = rand + "%";
     }
 }
-
-testRender();
