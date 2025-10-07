@@ -17,6 +17,11 @@
         "i2c_proto.h": "c",
         "queue.h": "c",
         "cstdint": "c",
-        "i2c.h": "c"
+        "i2c.h": "c",
+        "gpio.h": "c",
+        "spi_common.h": "c",
+        "spi_proto.h": "c",
+        "format": "c",
+        "cstdlib": "c"
     }
 }

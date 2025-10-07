@@ -3,7 +3,7 @@
 #include <esp_log.h>
 #include "esp_check.h"
 #include "board.h"
-#include "i2c_proto.h"
+#include "spi_proto.h"
 #include "wifi.h"
 #include "log.h"
 #include "netif.h"
@@ -68,8 +68,8 @@ esp_err_t board_init(void)
 #   error "Define exactly one of: BOARD_MASTER, BOARD_SLAVE1, BOARD_SLAVE2, BOARD_SLAVE3"
 #endif
 
-    ESP_ERROR_CHECK(i2c_init());
-    ESP_ERROR_CHECK(i2c_proto_init());
+    ESP_ERROR_CHECK(spi_init());
+    ESP_ERROR_CHECK(spi_proto_init());
 
     return ESP_OK;
 }

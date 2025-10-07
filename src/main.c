@@ -7,7 +7,7 @@
 // Boards Init Header
 #include "board.h"
 #include "log.h"
-#include "i2c_proto.h"
+#include "spi_proto.h"
 
 static const char *TAG = "MAIN";
 
@@ -26,21 +26,21 @@ void app_main()
     while (1) 
     {
         #if defined(BOARD_MASTER)
-        i2c_frame_t ping = { 0 };
+        proto_frame_t ping = { 0 };
         ping.header.cmd = CMD_PING;
         ping.header.len = 0;
         log_message(LOG_LEVEL_INFO, TAG, "Send PING to slave1");
-        i2c_send_frame(SLAVE1_ADDR, &ping, pdMS_TO_TICKS(100));
+        proto_send_frame(ESPWROOM32, &ping);
 
         vTaskDelay(pdMS_TO_TICKS(500));
 
         log_message(LOG_LEVEL_INFO, TAG, "Send PING to slave2");
-        i2c_send_frame(SLAVE2_ADDR, &ping, pdMS_TO_TICKS(100));
+        proto_send_frame(ESP32C5, &ping);
 
         vTaskDelay(pdMS_TO_TICKS(500));
 
         log_message(LOG_LEVEL_INFO, TAG, "Send PING to slave3");
-        i2c_send_frame(SLAVE3_ADDR, &ping, pdMS_TO_TICKS(100));
+        proto_send_frame(ESP32S3, &ping);
         #endif
 
         vTaskDelay(pdMS_TO_TICKS(500));
