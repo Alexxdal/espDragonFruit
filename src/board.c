@@ -47,25 +47,25 @@ esp_err_t master_init()
     err = httpd_server_start();
     ESP_RETURN_ON_ERROR(err, TAG, "httpd_server_start");
 
-    log_message(LOG_LEVEL_INFO, TAG, "Master board initialized.\n");
+    log_message(LOG_LEVEL_INFO, TAG, "Master board initialized.");
     return err;
 }
 #elif defined(BOARD_SLAVE1)
 esp_err_t slave_one_init()
 {
-    log_message(LOG_LEVEL_INFO, TAG, "Slave One board initialized.\n");
+    log_message(LOG_LEVEL_INFO, TAG, "Slave One board initialized.");
     return ESP_OK;
 }
 #elif defined(BOARD_SLAVE2)
 esp_err_t slave_two_init()
 {
-    log_message(LOG_LEVEL_INFO, TAG, "Slave Two board initialized.\n");
+    log_message(LOG_LEVEL_INFO, TAG, "Slave Two board initialized.");
     return ESP_OK;
 }
 #elif defined(BOARD_SLAVE3)
 esp_err_t slave_three_init()
 {
-    log_message(LOG_LEVEL_INFO, TAG, "Slave Three board initialized.\n");
+    log_message(LOG_LEVEL_INFO, TAG, "Slave Three board initialized.");
     return ESP_OK;
 }
 #endif
@@ -114,7 +114,7 @@ board_status_t *getSlaveStatus(int addr)
 {
     /* Slave address in frame is 1 index based */
     addr--;
-    
+
     if(addr > 2 || addr < 0)
         return NULL;
     return &slave_status[addr];
