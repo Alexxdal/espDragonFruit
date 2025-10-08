@@ -118,7 +118,7 @@ function appendNewLeftbarButton(iconUrl){
  * General initializer
  */
 function init(){
-    setupLeftBar(["/assets/gauge.svg", "/assets/flask-vial.svg"]);
+    setupLeftBar(["/assets/gauge.svg", "/assets/flask-viall.svg"]);
     renderNewPage(0);
     testRender();
 }
