@@ -69,6 +69,13 @@ esp_err_t board_init(void)
 {
     ESP_ERROR_CHECK(nvs_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    /* Get Chip info */
+    esp_chip_info_t chip;
+    esp_chip_info(&chip);
+    board_status.chip.cores = chip.cores;
+    board_status.chip.features = chip.features;
+    board_status.chip.model = chip.model;
+    board_status.chip.revision = chip.revision;
 
 #if defined(BOARD_MASTER)
     ESP_ERROR_CHECK(master_init());

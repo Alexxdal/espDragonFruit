@@ -2,6 +2,7 @@
 #define BOARD_H
 
 #pragma once
+#include "esp_chip_info.h"
 #include "esp_err.h"
 
 typedef enum {
@@ -15,6 +16,9 @@ typedef enum {
 } wifi_action_t;
 
 typedef struct __attribute((packed)) {
+    /* Board info */
+    esp_chip_info_t chip;
+
     /* Module initialization status */
     uint8_t spi_status;
     uint8_t netif_status;

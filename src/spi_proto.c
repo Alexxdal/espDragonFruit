@@ -8,6 +8,7 @@
 
 #include "log.h"
 #include "spi_proto.h"
+#include "commandMng.h"
 
 DMA_ATTR static proto_frame_t tx_frame = { 0 };
 DMA_ATTR static proto_frame_t rx_frame = { 0 };
@@ -47,30 +48,6 @@ esp_err_t spi_proto_init(void)
 #endif
     log_message(LOG_LEVEL_INFO, TAG, "SPI Protocol manager initialized");
     return ESP_OK; 
-}
-
-static proto_frame_t *handle_frame(const proto_frame_t *frame)
-{
-    static proto_frame_t response = { 0 };
-    log_message(LOG_LEVEL_DEBUG, TAG, "Received command=%d from slave=%d", frame->header.cmd, frame->header.addr);
-
-    switch (frame->header.cmd) {
-        case CMD_PING: {
-            response.header.cmd = CMD_PONG;
-            response.header.len = 0;
-            return &response;
-        }
-        case CMD_WIFI_ON: {
-            break;
-        }
-        case CMD_WIFI_SCAN: {
-            break;
-        }
-        default: {
-            break;
-        }
-    }
-    return NULL;
 }
 
 esp_err_t proto_send_frame(int slave_addr, proto_frame_t *frame)

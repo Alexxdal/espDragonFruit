@@ -35,7 +35,7 @@ esp_err_t spi_init(void)
             .duty_cycle_pos = 128,
             .cs_ena_pretrans = 16,
             .cs_ena_posttrans = 16,
-            .clock_speed_hz =  1000000,
+            .clock_speed_hz =  10000000,
             .spics_io_num = slave_cs[i],
             .queue_size = 16
         };
