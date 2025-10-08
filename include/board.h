@@ -19,6 +19,12 @@ typedef struct __attribute((packed)) {
     /* Board info */
     esp_chip_info_t chip;
 
+    /* RAM */
+    uint32_t total_internal_memory;
+    uint32_t free_internal_memory;
+    uint32_t largest_contig_internal_block;
+    size_t spiram_size;
+
     /* Module initialization status */
     uint8_t spi_status;
     uint8_t netif_status;
@@ -42,5 +48,10 @@ esp_err_t board_init();
  * @brief Get the current board status and settings
  */
 board_status_t * getBoardStatus(void);
+
+/**
+ * @brief Get Slave board status and settings
+ */
+board_status_t *getSlaveStatus(int addr);
 
 #endif // BOARD_H

@@ -18,6 +18,11 @@ static const char *TAG = "BOARD";
 static board_status_t board_status = { 0 };
 
 #if defined(BOARD_MASTER)
+static board_status_t slave_status[3];
+#endif
+
+
+#if defined(BOARD_MASTER)
 esp_err_t master_init()
 {
     esp_err_t err = ESP_OK;
@@ -103,3 +108,15 @@ board_status_t *getBoardStatus(void)
 {
     return &board_status;
 }
+
+#if defined(BOARD_MASTER)
+board_status_t *getSlaveStatus(int addr)
+{
+    /* Slave address in frame is 1 index based */
+    addr--;
+    
+    if(addr > 2 || addr < 0)
+        return NULL;
+    return &slave_status[addr];
+}
+#endif

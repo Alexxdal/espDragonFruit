@@ -50,10 +50,11 @@ esp_err_t spi_proto_init(void)
     return ESP_OK; 
 }
 
-esp_err_t proto_send_frame(int slave_addr, proto_frame_t *frame)
+esp_err_t proto_send_frame(int slave_addr, void *frame)
 {
-    frame->header.addr = slave_addr;
-    frame->header.crc = crc8_atm((const uint8_t *)frame + 1, (sizeof(proto_header_t) - 1) + frame->header.len);
+    proto_frame_t *frame_cast = (proto_frame_t *)frame;
+    frame_cast->header.addr = slave_addr;
+    frame_cast->header.crc = crc8_atm((const uint8_t *)frame + 1, (sizeof(proto_header_t) - 1) + frame_cast->header.len);
     if(xQueueSend(tx_frame_queue, frame, 50) != pdTRUE)
     {
         log_message(LOG_LEVEL_DEBUG, TAG, "Failed to add frame to queue");
@@ -68,9 +69,12 @@ void proto_master_task(void *arg)
     (void)arg;
     while(1)
     {
-        /* Check if there are some message in the queue */
+        /* Check if there are some message in the queue, if there are no message send poll */
         if(xQueueReceive(tx_frame_queue, &tx_frame, portMAX_DELAY) == pdFALSE)
-            continue;
+        {
+            tx_frame.header.cmd = CMD_POLL;
+            tx_frame.header.len = 0;
+        }
 
         for(int i = 0; i < 3; i ++)
         {
@@ -81,7 +85,7 @@ void proto_master_task(void *arg)
                 {
                     uint8_t crc = crc8_atm((const uint8_t *)&rx_frame + 1, (sizeof(proto_header_t) - 1) + rx_frame.header.len);
                     if(rx_frame.header.crc == crc)
-                        handle_frame(&rx_frame);
+                        handle_frame_master(&rx_frame);
                 }
             }
         }     
@@ -111,7 +115,7 @@ void proto_slave_task(void *arg)
                 uint8_t crc = crc8_atm((const uint8_t *)&rx_frame + 1, (sizeof(proto_header_t) - 1) + rx_frame.header.len);
                 if(rx_frame.header.crc == crc)
                 {
-                    proto_frame_t *response = handle_frame(&rx_frame);
+                    proto_frame_t *response = handle_frame_slave(&rx_frame);
                     if(response != NULL)
                     {
                         proto_send_frame(SLAVE_ADDR, response);

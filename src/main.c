@@ -27,21 +27,22 @@ void app_main()
     while (1) 
     {
         #if defined(BOARD_MASTER)
-        proto_frame_t ping = { 0 };
-        ping.header.cmd = CMD_PING;
-        ping.header.len = 0;
+        proto_chip_info_t chip_info = {
+            .header.cmd = CMD_CHIP_INFO
+        };
+
         log_message(LOG_LEVEL_INFO, TAG, "Send PING to slave1");
-        proto_send_frame(ESPWROOM32, &ping);
+        proto_send_frame(ESPWROOM32, &chip_info);
 
         vTaskDelay(pdMS_TO_TICKS(500));
 
         log_message(LOG_LEVEL_INFO, TAG, "Send PING to slave2");
-        proto_send_frame(ESP32C5, &ping);
+        proto_send_frame(ESP32C5, &chip_info);
 
         vTaskDelay(pdMS_TO_TICKS(500));
 
         log_message(LOG_LEVEL_INFO, TAG, "Send PING to slave3");
-        proto_send_frame(ESP32S3, &ping);
+        proto_send_frame(ESP32S3, &chip_info);
         #endif
 
         vTaskDelay(pdMS_TO_TICKS(500));

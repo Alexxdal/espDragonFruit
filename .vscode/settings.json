@@ -24,6 +24,7 @@
         "format": "c",
         "cstdlib": "c",
         "esp_spiffs.h": "c",
-        "netif.h": "c"
+        "netif.h": "c",
+        "esp_chip_info.h": "c"
     }
 }
