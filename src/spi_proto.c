@@ -15,6 +15,23 @@ static QueueHandle_t tx_frame_queue;
 
 static const char *TAG = "SPI_PROTO";
 
+static uint8_t crc8_atm(const uint8_t *data, size_t len) {
+    const uint8_t poly = 0x07;
+    uint8_t crc = 0x00;
+    for (size_t i = 0; i < len; ++i) 
+    {
+        crc ^= data[i];
+        for (int b = 0; b < 8; ++b) 
+        {
+            if (crc & 0x80) 
+                crc = (uint8_t)((crc << 1) ^ poly);
+            else             
+                crc <<= 1;
+        }
+    }
+    return crc;
+}
+
 esp_err_t spi_proto_init(void)
 {
     tx_frame_queue = xQueueCreate(FRAME_QUEUE_SIZE, sizeof(proto_frame_t));
@@ -41,7 +58,6 @@ static proto_frame_t *handle_frame(const proto_frame_t *frame)
         case CMD_PING: {
             response.header.cmd = CMD_PONG;
             response.header.len = 0;
-            response.header.crc = 0;
             return &response;
         }
         case CMD_WIFI_ON: {
@@ -60,6 +76,7 @@ static proto_frame_t *handle_frame(const proto_frame_t *frame)
 esp_err_t proto_send_frame(int slave_addr, proto_frame_t *frame)
 {
     frame->header.addr = slave_addr;
+    frame->header.crc = crc8_atm((const uint8_t *)frame + 1, (sizeof(proto_header_t) - 1) + frame->header.len);
     if(xQueueSend(tx_frame_queue, frame, 50) != pdTRUE)
     {
         log_message(LOG_LEVEL_DEBUG, TAG, "Failed to add frame to queue");
@@ -85,7 +102,9 @@ void proto_master_task(void *arg)
             {
                 if(rx_frame.header.cmd != 0xffff && rx_frame.header.cmd != 0x0)
                 {
-                    handle_frame(&rx_frame);
+                    uint8_t crc = crc8_atm((const uint8_t *)&rx_frame + 1, (sizeof(proto_header_t) - 1) + rx_frame.header.len);
+                    if(rx_frame.header.crc == crc)
+                        handle_frame(&rx_frame);
                 }
             }
         }     
@@ -99,11 +118,9 @@ void proto_slave_task(void *arg)
     while (1)
     {
         /* Check if there are some message in the queue */
-        if(xQueueReceive(tx_frame_queue, &tx_frame, 10) == pdTRUE)
+        if(xQueueReceive(tx_frame_queue, &tx_frame, 10) == pdFALSE)
         {
-            tx_frame.header.addr = SLAVE_ADDR;
-        }
-        else {
+            tx_frame.header.crc = 0;
             tx_frame.header.addr = 0;
             tx_frame.header.cmd = 0;
             tx_frame.header.len = 0;
@@ -114,10 +131,14 @@ void proto_slave_task(void *arg)
         {
             if(rx_frame.header.addr == SLAVE_ADDR)
             {
-                proto_frame_t *response = handle_frame(&rx_frame);
-                if(response != NULL)
+                uint8_t crc = crc8_atm((const uint8_t *)&rx_frame + 1, (sizeof(proto_header_t) - 1) + rx_frame.header.len);
+                if(rx_frame.header.crc == crc)
                 {
-                    xQueueSend(tx_frame_queue, response, 10);
+                    proto_frame_t *response = handle_frame(&rx_frame);
+                    if(response != NULL)
+                    {
+                        proto_send_frame(SLAVE_ADDR, response);
+                    }
                 }
             }
         }

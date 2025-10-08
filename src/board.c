@@ -17,7 +17,8 @@
 static const char *TAG = "BOARD";
 static board_status_t board_status = { 0 };
 
-__attribute__((weak)) esp_err_t master_init()
+#if defined(BOARD_MASTER)
+esp_err_t master_init()
 {
     esp_err_t err = ESP_OK;
 
@@ -44,25 +45,25 @@ __attribute__((weak)) esp_err_t master_init()
     log_message(LOG_LEVEL_INFO, TAG, "Master board initialized.\n");
     return err;
 }
-
-__attribute__((weak)) esp_err_t slave_one_init()
+#elif defined(BOARD_SLAVE1)
+esp_err_t slave_one_init()
 {
     log_message(LOG_LEVEL_INFO, TAG, "Slave One board initialized.\n");
     return ESP_OK;
 }
-
-__attribute__((weak)) esp_err_t slave_two_init()
+#elif defined(BOARD_SLAVE2)
+esp_err_t slave_two_init()
 {
     log_message(LOG_LEVEL_INFO, TAG, "Slave Two board initialized.\n");
     return ESP_OK;
 }
-
-__attribute__((weak)) esp_err_t slave_three_init()
+#elif defined(BOARD_SLAVE3)
+esp_err_t slave_three_init()
 {
     log_message(LOG_LEVEL_INFO, TAG, "Slave Three board initialized.\n");
     return ESP_OK;
 }
-
+#endif
 
 esp_err_t board_init(void)
 {

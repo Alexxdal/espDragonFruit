@@ -18,10 +18,10 @@ typedef enum {
 #define FRAME_QUEUE_SIZE     16
 
 typedef struct __attribute((packed)) {
+    uint8_t crc;
     uint8_t addr;
     uint16_t cmd;
     uint16_t len;
-    uint8_t crc;
 } proto_header_t;
 
 typedef struct __attribute((packed)) {
