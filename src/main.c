@@ -8,6 +8,7 @@
 #include "board.h"
 #include "log.h"
 #include "spi_proto.h"
+#include "cJSON.h"
 
 static const char *TAG = "MAIN";
 

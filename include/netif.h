@@ -5,11 +5,6 @@
 #include "esp_netif.h"
 
 /**
- * @brief Get the status of the network interface initialization.
- */
-bool getNetIfStatus(void);
-
-/**
  * @breif Initialize the network interface.
  */
 esp_err_t network_interface_init(void);

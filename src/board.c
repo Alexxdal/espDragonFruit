@@ -15,6 +15,7 @@
 #endif
 
 static const char *TAG = "BOARD";
+static board_status_t board_status = { 0 };
 
 __attribute__((weak)) esp_err_t master_init()
 {
@@ -88,4 +89,9 @@ esp_err_t board_init(void)
     ESP_ERROR_CHECK(spi_proto_init());
 
     return ESP_OK;
+}
+
+board_status_t *getBoardStatus(void)
+{
+    return &board_status;
 }

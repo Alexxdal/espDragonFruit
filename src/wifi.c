@@ -1,22 +1,23 @@
 #include <string.h>
 #include <esp_log.h>
+#include "board.h"
 #include "wifi.h"
 #include "log.h"
 #include "netif.h"
 
 static const char *TAG = "WIFI";
-static wifi_status_t wifi_status = 
-{ 
-    false,
-    false
-};
-
 
 esp_err_t wifi_init_apsta(void)
 {
     esp_err_t err = ESP_OK;
+    board_status_t *board_status = getBoardStatus();
 
-    if(wifi_status.wifi_initialized == true) {
+    if(board_status == NULL) {
+        log_message(LOG_LEVEL_DEBUG, TAG, "Failed to get board status");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if(board_status->wifi_status == true) {
         log_message(LOG_LEVEL_WARN, TAG, "WiFi already initialized");
         return ESP_OK;
     }
@@ -63,7 +64,7 @@ esp_err_t wifi_init_apsta(void)
         log_message(LOG_LEVEL_ERROR, TAG, "Failed to set WiFi country: %s", esp_err_to_name(err));
         return err;
     }
-    wifi_status.wifi_initialized = true;
+    board_status->wifi_status = true;
 
     log_message(LOG_LEVEL_INFO, TAG, "WiFi initialized in AP+STA mode");
     return ESP_OK;
@@ -73,18 +74,19 @@ esp_err_t wifi_init_apsta(void)
 esp_err_t wifi_start_softap(void)
 {
     esp_err_t err = ESP_OK;
+    board_status_t *board_status = getBoardStatus();
 
-    if(wifi_status.wifi_initialized == false) {
+    if(board_status->wifi_status == false) {
         log_message(LOG_LEVEL_ERROR, TAG, "WiFi not initialized");
         return ESP_ERR_INVALID_STATE;
     }
 
-    if(wifi_status.softap_running == true) {
+    if(board_status-> wifi_action == WIFI_APSTA_MODE) {
         log_message(LOG_LEVEL_ERROR, TAG, "SoftAP already running");
         return ESP_OK;
     }
 
-    if(getNetIfStatus() == false) {
+    if(board_status->netif_status == false) {
         log_message(LOG_LEVEL_ERROR, TAG, "Network interface not initialized");
         return ESP_ERR_INVALID_STATE;
     }
@@ -109,12 +111,23 @@ esp_err_t wifi_start_softap(void)
         }
     };
 
+    /* Set AP Config if present */
+    if(board_status->ap_ssid[0] != '\0') {
+        strncpy((char *)&wifi_config.ap.ssid, board_status->ap_ssid, strlen(board_status->ap_ssid));
+    }
+    if(board_status->ap_password[0] != '\0') {
+        strncpy((char *)&wifi_config.ap.password, board_status->ap_password, strlen(board_status->ap_password));
+    }
+    if(board_status->ap_channel != 0) {
+        wifi_config.ap.channel = board_status->ap_channel;
+    }
+
     err = esp_wifi_set_config(WIFI_IF_AP, &wifi_config);
     if(err != ESP_OK) {
         log_message(LOG_LEVEL_ERROR, TAG, "Failed to set SoftAP config: %s", esp_err_to_name(err));
         return err;
     }
-    wifi_status.softap_running = true;
+    board_status->wifi_action = WIFI_APSTA_MODE;
 
     log_message(LOG_LEVEL_INFO, TAG, "SoftAP started with SSID:%s password:%s", wifi_config.ap.ssid, wifi_config.ap.password);
     return ESP_OK;
