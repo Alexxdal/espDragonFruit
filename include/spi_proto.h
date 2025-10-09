@@ -7,20 +7,21 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "spi.h"
+#include "board.h"
 
 typedef enum {
     /* MASTER */
-    CMD_POLL = 0x01,
-    CMD_CHIP_INFO,
-    CMD_WIFI_SCAN,
+    CMD_BOARD_STATUS = 0x01,
+    CMD_MEM_INFO,
 
     /* SLAVE */
     CMD_ACK,
-    CMD_CHIP_INFO_RESPONSE
+    CMD_BOARD_STATUS_RESPONSE,
+    CMD_MEM_INFO_RESPONSE
 } proto_cmd_t;
 
-#define PROTO_MAX_PAYLOAD   256
-#define FRAME_QUEUE_SIZE     16
+#define PROTO_MAX_PAYLOAD   2048
+#define FRAME_QUEUE_SIZE    4
 
 typedef struct __attribute((packed)) {
     uint8_t crc;
@@ -37,9 +38,9 @@ typedef struct __attribute((packed)) {
 typedef struct __attribute((packed)) {
     proto_header_t header;
     struct {
-        esp_chip_info_t chip;
+        board_status_t status;
     } fields;
-} proto_chip_info_t;
+} proto_board_status_t;
 
 esp_err_t spi_proto_init(void);
 

@@ -8,6 +8,7 @@
 #include "log.h"
 #include "netif.h"
 #include "nvs_config.h"
+#include "esp_heap_caps.h"
 
 #if defined(BOARD_MASTER)
 #include "esp_spiffs.h"
@@ -15,12 +16,34 @@
 #endif
 
 static const char *TAG = "BOARD";
+static TaskHandle_t common_board_task_handle;
 static board_status_t board_status = { 0 };
 
 #if defined(BOARD_MASTER)
-static board_status_t slave_status[3];
+static board_status_t slave_status[3] = { 0 };
 #endif
 
+static void common_board_task(void *arg)
+{
+    (void)arg;
+    while(1)
+    {
+        board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+
+        #if defined(BOARD_MASTER)
+        /* Get slaves status */
+        proto_board_status_t status_req = { 0 };
+        status_req.header.cmd = CMD_BOARD_STATUS;
+        proto_send_frame(ESPWROOM32, &status_req);
+        vTaskDelay(pdMS_TO_TICKS(1));
+        proto_send_frame(ESP32C5, &status_req);
+        vTaskDelay(pdMS_TO_TICKS(1));
+        proto_send_frame(ESP32S3, &status_req);
+        #endif
+
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+}
 
 #if defined(BOARD_MASTER)
 esp_err_t master_init()
@@ -74,6 +97,7 @@ esp_err_t board_init(void)
 {
     ESP_ERROR_CHECK(nvs_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+
     /* Get Chip info */
     esp_chip_info_t chip;
     esp_chip_info(&chip);
@@ -81,6 +105,10 @@ esp_err_t board_init(void)
     board_status.chip.features = chip.features;
     board_status.chip.model = chip.model;
     board_status.chip.revision = chip.revision;
+    board_status.total_internal_memory = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+    board_status.largest_contig_internal_block = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    board_status.spiram_size = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
 
 #if defined(BOARD_MASTER)
     ESP_ERROR_CHECK(master_init());
@@ -100,6 +128,9 @@ esp_err_t board_init(void)
 
     ESP_ERROR_CHECK(spi_init());
     ESP_ERROR_CHECK(spi_proto_init());
+
+    /* Start common board task */
+    xTaskCreate(common_board_task, "common_board_task", 2048, NULL, 5, &common_board_task_handle);
 
     return ESP_OK;
 }

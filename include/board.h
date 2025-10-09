@@ -54,4 +54,5 @@ board_status_t * getBoardStatus(void);
  */
 board_status_t *getSlaveStatus(int addr);
 
+
 #endif // BOARD_H
