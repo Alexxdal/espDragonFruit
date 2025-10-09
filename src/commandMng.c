@@ -9,16 +9,11 @@ static const char *TAG = "COMMAND_MNG";
 proto_frame_t *handle_frame_master(const proto_frame_t *frame)
 {
     //log_message(LOG_LEVEL_DEBUG, TAG, "Received command=%d with len=%d from slave=%d", frame->header.cmd, frame->header.len, frame->header.addr);
-
     switch (frame->header.cmd) {
-        case CMD_CHIP_INFO_RESPONSE: {
-            proto_chip_info_t *chip_info = (proto_chip_info_t *)frame;
+        case CMD_BOARD_STATUS_RESPONSE: {
+            proto_board_status_t *board_status_pkt = (proto_board_status_t *)frame;
             board_status_t *slave = getSlaveStatus(frame->header.addr);
-            memcpy(&slave->chip, &chip_info->fields.chip, sizeof(chip_info->fields.chip));
-            log_message(LOG_LEVEL_DEBUG, TAG, "Chip model: %d", slave->chip.model);
-            break;
-        }
-        case CMD_WIFI_SCAN: {
+            memcpy(slave, &board_status_pkt->fields.status, sizeof(board_status_pkt->fields));
             break;
         }
         default: {
@@ -32,24 +27,15 @@ proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
 {
     static proto_frame_t response = { 0 };
     //log_message(LOG_LEVEL_DEBUG, TAG, "Received command=%d with len=%d from master", frame->header.cmd, frame->header.len);
-
     switch (frame->header.cmd) {
-        case CMD_POLL: {
-            response.header.cmd = CMD_ACK;
-            response.header.len = 0;
-            return &response;
-        }
-        case CMD_CHIP_INFO: {
+        case CMD_BOARD_STATUS: {
             board_status_t *board_status = getBoardStatus();
-            proto_chip_info_t chip_info = {
-                .header.cmd = CMD_CHIP_INFO_RESPONSE,
-                .fields.chip = board_status->chip
-            };
-            memcpy(&response, &chip_info, sizeof(proto_chip_info_t));
+            proto_board_status_t board_status_pkt = { 0 };
+            board_status_pkt.header.cmd = CMD_BOARD_STATUS_RESPONSE;
+            board_status_pkt.header.len = sizeof(board_status_pkt.fields);
+            board_status_pkt.fields.status = *board_status;
+            memcpy(&response, &board_status_pkt, sizeof(proto_board_status_t));
             return &response;
-        }
-        case CMD_WIFI_SCAN: {
-            break;
         }
         default: {
             break;

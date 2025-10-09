@@ -10,6 +10,11 @@
 #include "spi_proto.h"
 #include "commandMng.h"
 
+/* Statistics */
+static uint64_t frame_sent = 0;
+static uint64_t frame_received = 0;
+static uint64_t frame_crc_error = 0;
+
 DMA_ATTR static proto_frame_t tx_frame = { 0 };
 DMA_ATTR static proto_frame_t rx_frame = { 0 };
 static QueueHandle_t tx_frame_queue;
@@ -60,6 +65,7 @@ esp_err_t proto_send_frame(int slave_addr, void *frame)
         log_message(LOG_LEVEL_DEBUG, TAG, "Failed to add frame to queue");
         return ESP_ERR_NO_MEM;
     }
+    frame_sent++;
     return ESP_OK;
 }
 
@@ -72,7 +78,7 @@ void proto_master_task(void *arg)
         /* Check if there are some message in the queue, if there are no message send poll */
         if(xQueueReceive(tx_frame_queue, &tx_frame, portMAX_DELAY) == pdFALSE)
         {
-            tx_frame.header.cmd = CMD_POLL;
+            tx_frame.header.cmd = CMD_BOARD_STATUS;
             tx_frame.header.len = 0;
         }
 
@@ -85,7 +91,13 @@ void proto_master_task(void *arg)
                 {
                     uint8_t crc = crc8_atm((const uint8_t *)&rx_frame + 1, (sizeof(proto_header_t) - 1) + rx_frame.header.len);
                     if(rx_frame.header.crc == crc)
+                    {
+                        frame_received++;
                         handle_frame_master(&rx_frame);
+                    }
+                    else {
+                        frame_crc_error++;
+                    }
                 }
             }
         }     
@@ -115,11 +127,15 @@ void proto_slave_task(void *arg)
                 uint8_t crc = crc8_atm((const uint8_t *)&rx_frame + 1, (sizeof(proto_header_t) - 1) + rx_frame.header.len);
                 if(rx_frame.header.crc == crc)
                 {
+                    frame_received++;
                     proto_frame_t *response = handle_frame_slave(&rx_frame);
                     if(response != NULL)
                     {
                         proto_send_frame(SLAVE_ADDR, response);
                     }
+                }
+                else {
+                    frame_crc_error++;
                 }
             }
         }
