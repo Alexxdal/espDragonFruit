@@ -1,4 +1,4 @@
-import testRender from "./test.js"
+var systemInfoJSON = null;
 
 let diagnostic = `
 <!-- LOGO -->
@@ -11,11 +11,11 @@ let diagnostic = `
         <div class="title">System Status</div>
         <div id="cpu-data" class="data">
             <div class="cnt-status-data">
-                <div class="value" >100%</div>
+                <div class="value" >--%</div>
                 <div class="val-title">CPU</div>
             </div>
             <div class="cnt-status-data">
-                <div class="value">100%</div>
+                <div class="value">--%</div>
                 <div class="val-title">RAM</div>
             </div>
         </div>
@@ -24,7 +24,7 @@ let diagnostic = `
         <div class="title">Disk Usage</div>
         <div class="data">
             <div class="cnt-status-data">
-                <div class="value">100%</div>
+                <div class="value">--%</div>
                 <div class="val-title">Root</div>
             </div>
         </div>
@@ -33,11 +33,11 @@ let diagnostic = `
         <div class="title">Connected Devices</div>
         <div class="data">
             <div class="cnt-status-data">
-                <div class="value">2</div>
+                <div class="value">--</div>
                 <div class="val-title">Current</div>
             </div>
             <div class="cnt-status-data">
-                <div class="value">0</div>
+                <div class="value">--</div>
                 <div class="val-title">Previous</div>
             </div>
         </div>
@@ -46,11 +46,11 @@ let diagnostic = `
         <div class="title">SSIDs Connected</div>
         <div class="data">
             <div class="cnt-status-data">
-                <div class="value">0</div>
+                <div class="value">--</div>
                 <div class="val-title">Sessions</div>
             </div>
             <div class="cnt-status-data">
-                <div class="value">18</div>
+                <div class="value">--</div>
                 <div class="val-title">Total</div>
             </div>
         </div>
@@ -114,13 +114,28 @@ function appendNewLeftbarButton(iconUrl){
 }
 
 
+function handleSystemInfo(responseJSON)
+{
+    systemInfoJSON = responseJSON
+    var cpuDataDiv = document.getElementById("cpu-data")
+    var ramDiv = cpuDataDiv.querySelectorAll(".cnt-status-data")
+    var valueDiv = ramDiv[1].querySelector(".value")
+    valueDiv.innerHTML = Math.round((100 - ((systemInfoJSON.master.ram.free_internal / systemInfoJSON.master.ram.total_internal) * 100))) + "%" 
+}
+
+async function getSystemInfo() {
+    var request = await fetch("http://192.168.4.1/status")
+        .then(response => response.json())
+        .then(data => handleSystemInfo(data));
+}
+
 /**
  * General initializer
  */
 function init(){
     setupLeftBar(["/assets/gauge.svg", "/assets/flask-viall.svg"]);
     renderNewPage(0);
-    testRender();
+    setInterval(getSystemInfo, 1000);
 }
 
 // SCRIPT START
