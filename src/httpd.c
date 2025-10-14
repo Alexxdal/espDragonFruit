@@ -30,15 +30,13 @@ static void add_board_status_json(cJSON *parent, const char *name, const board_s
 
     cJSON *o = cJSON_CreateObject();
     cJSON_AddItemToObject(parent, name, o);
-
-    // Chip info (mappo i campi principali)
+    // Chip info
     cJSON *chip = cJSON_CreateObject();
     cJSON_AddItemToObject(o, "chip", chip);
     cJSON_AddNumberToObject(chip, "model",   st->chip.model);     // vedi esp_chip_model_t
     cJSON_AddNumberToObject(chip, "cores",   st->chip.cores);
     cJSON_AddNumberToObject(chip, "revision",st->chip.revision);
     cJSON_AddNumberToObject(chip, "features",st->chip.features);  // bitmask
-
     // RAM
     cJSON *ram = cJSON_CreateObject();
     cJSON_AddItemToObject(o, "ram", ram);
@@ -46,22 +44,21 @@ static void add_board_status_json(cJSON *parent, const char *name, const board_s
     cJSON_AddNumberToObject(ram, "free_internal",    st->free_internal_memory);
     cJSON_AddNumberToObject(ram, "largest_contig",   st->largest_contig_internal_block);
     cJSON_AddNumberToObject(ram, "spiram_size",      (double)st->spiram_size);
-
     // Module status
     cJSON *m = cJSON_CreateObject();
     cJSON_AddItemToObject(o, "modules", m);
     cJSON_AddBoolToObject(m, "spi",       st->spi_status != 0);
     cJSON_AddBoolToObject(m, "netif",     st->netif_status != 0);
-    cJSON_AddBoolToObject(m, "wifi",      st->wifi_status != 0);
+    cJSON_AddBoolToObject(m, "wifi_init", st->wifi_init != 0);
+    cJSON_AddBoolToObject(m, "wifi_started", st->wifi_started != 0);
     cJSON_AddBoolToObject(m, "bluetooth", st->bluetooth_status != 0);
-
     // Wi-Fi
     cJSON *wifi = cJSON_CreateObject();
     cJSON_AddItemToObject(o, "wifi", wifi);
-    cJSON_AddStringToObject(wifi, "ap_ssid",     st->ap_ssid);
-    cJSON_AddStringToObject(wifi, "ap_password", st->ap_password);
-    cJSON_AddNumberToObject(wifi, "ap_channel",  st->ap_channel);
-    cJSON_AddNumberToObject(wifi, "action",      st->wifi_action);
+    cJSON_AddStringToObject(wifi, "ap_ssid",     (char*)st->wifi_config_ap.ssid);
+    cJSON_AddStringToObject(wifi, "ap_password", (char*)st->wifi_config_ap.password);
+    cJSON_AddNumberToObject(wifi, "ap_channel",  st->wifi_config_ap.channel);
+    cJSON_AddNumberToObject(wifi, "mode",        st->wifi_mode);
 }
 
 static esp_err_t status_get_handler(httpd_req_t *req)

@@ -32,7 +32,7 @@ esp_err_t spi_init(void)
         spi_device_interface_config_t device = {
             .mode = 1,
             .clock_source = SPI_CLK_SRC_DEFAULT,
-            .duty_cycle_pos = 128,
+            .duty_cycle_pos = 200,
             .cs_ena_pretrans = 16,
             .cs_ena_posttrans = 16,
             .clock_speed_hz =  10000000,

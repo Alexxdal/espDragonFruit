@@ -17,7 +17,7 @@
 
 static const char *TAG = "BOARD";
 static TaskHandle_t common_board_task_handle;
-static board_status_t board_status = { 0 };
+static board_status_t board_status;
 
 #if defined(BOARD_MASTER)
 static board_status_t slave_status[3] = { 0 };
@@ -26,22 +26,22 @@ static board_status_t slave_status[3] = { 0 };
 static void common_board_task(void *arg)
 {
     (void)arg;
+    /* Get Chip info */
+    esp_chip_info_t chip;
+    esp_chip_info(&chip);
+    board_status.chip.cores = chip.cores;
+    board_status.chip.features = chip.features;
+    board_status.chip.model = chip.model;
+    board_status.chip.revision = chip.revision;
+    board_status.total_internal_memory = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+    board_status.largest_contig_internal_block = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    board_status.spiram_size = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+
     while(1)
     {
         board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-
-        #if defined(BOARD_MASTER)
-        /* Get slaves status */
-        proto_board_status_t status_req = { 0 };
-        status_req.header.cmd = CMD_BOARD_STATUS;
-        proto_send_frame(ESPWROOM32, &status_req);
-        vTaskDelay(pdMS_TO_TICKS(1));
-        proto_send_frame(ESP32C5, &status_req);
-        vTaskDelay(pdMS_TO_TICKS(1));
-        proto_send_frame(ESP32S3, &status_req);
-        #endif
-
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -50,15 +50,6 @@ esp_err_t master_init()
 {
     esp_err_t err = ESP_OK;
 
-    err = network_interface_init();
-    ESP_RETURN_ON_ERROR(err, TAG, "netif_init");
-
-    err = wifi_init_apsta();
-    ESP_RETURN_ON_ERROR(err, TAG, "wifi_init_apsta");
-
-    err = wifi_start_softap();
-    ESP_RETURN_ON_ERROR(err, TAG, "wifi_start_softap");
-
     esp_vfs_spiffs_conf_t conf = {
         .base_path = "/spiffs",
         .partition_label = "spiffs",
@@ -66,6 +57,21 @@ esp_err_t master_init()
         .format_if_mount_failed = false
     };
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
+
+    //TODO: Add this config in the spiffs like factory settings
+    ap_config_t wifi_config_ap = {
+        .ssid = "espDragonFruit",
+        .password = "espDragonFruit",
+        .channel = 1,
+        .authmode = WIFI_AUTH_WPA2_PSK,
+        .beacon_interval = 300,
+        .max_connection = 5,
+        .pmf_required = false,
+        .pmf_capable = false
+    };
+
+    err = wifi_set_config(&wifi_config_ap, NULL, WIFI_MODE_AP);
+    ESP_RETURN_ON_ERROR(err, TAG, "wifi_set_config");
 
     err = httpd_server_start();
     ESP_RETURN_ON_ERROR(err, TAG, "httpd_server_start");
@@ -95,20 +101,11 @@ esp_err_t slave_three_init()
 
 esp_err_t board_init(void)
 {
+    memset(&board_status, 0, sizeof(board_status_t));
+
     ESP_ERROR_CHECK(nvs_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    /* Get Chip info */
-    esp_chip_info_t chip;
-    esp_chip_info(&chip);
-    board_status.chip.cores = chip.cores;
-    board_status.chip.features = chip.features;
-    board_status.chip.model = chip.model;
-    board_status.chip.revision = chip.revision;
-    board_status.total_internal_memory = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
-    board_status.largest_contig_internal_block = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
-    board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-    board_status.spiram_size = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+    ESP_ERROR_CHECK(network_interface_init());
 
 #if defined(BOARD_MASTER)
     ESP_ERROR_CHECK(master_init());

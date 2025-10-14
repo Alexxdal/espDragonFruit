@@ -2,14 +2,15 @@
 #define BOARD_H
 
 #pragma once
+#include "esp_wifi_types_generic.h"
 #include "esp_chip_info.h"
 #include "esp_err.h"
+#include "wifi.h"
 
 typedef enum {
     WIFI_IDLE = 0,
-    WIFI_SCANNING,
-    WIFI_AP_MODE,
     WIFI_STA_MODE,
+    WIFI_AP_MODE,
     WIFI_APSTA_MODE,
     WIFI_CONNECTED,
     WIFI_DEAUTHING
@@ -28,14 +29,14 @@ typedef struct __attribute((packed)) {
     /* Module initialization status */
     uint8_t spi_status;
     uint8_t netif_status;
-    uint8_t wifi_status;
+    uint8_t wifi_init;
+    uint8_t wifi_started;
     uint8_t bluetooth_status;
     
     /* WIFI */
-    char ap_ssid[64];
-    char ap_password[32];
-    uint8_t ap_channel;
-    wifi_action_t wifi_action;
+    ap_config_t wifi_config_ap;
+    sta_config_t wifi_config_sta;
+    wifi_mode_t wifi_mode;
     
 } board_status_t;
 
