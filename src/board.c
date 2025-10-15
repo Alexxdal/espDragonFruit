@@ -122,10 +122,7 @@ esp_err_t board_init(void)
 #else
 #   error "Define exactly one of: BOARD_MASTER, BOARD_SLAVE1, BOARD_SLAVE2, BOARD_SLAVE3"
 #endif
-
-    ESP_ERROR_CHECK(spi_init());
     ESP_ERROR_CHECK(spi_proto_init());
-
     /* Start common board task */
     xTaskCreate(common_board_task, "common_board_task", 2048, NULL, 5, &common_board_task_handle);
 

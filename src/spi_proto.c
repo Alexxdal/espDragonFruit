@@ -46,6 +46,12 @@ esp_err_t spi_proto_init(void)
     memset(&tx_frame, 0, sizeof(tx_frame));
     memset(&rx_frame, 0, sizeof(rx_frame));
 
+    esp_err_t err = spi_init();
+    if(err != ESP_OK) {
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to initialize SPI Bus. err=%s", esp_err_to_name(err));
+        return err;
+    }
+
     tx_frame_queue = xQueueCreate(FRAME_QUEUE_SIZE, sizeof(proto_frame_t));
     if(tx_frame_queue == NULL)
     {
@@ -57,7 +63,9 @@ esp_err_t spi_proto_init(void)
 #else
     xTaskCreate(proto_slave_task, "proto_slave_task", 4096, NULL, 5, NULL);
 #endif
-    log_message(LOG_LEVEL_INFO, TAG, "SPI Protocol manager initialized");
+    log_message(LOG_LEVEL_INFO, TAG, "SPI Protocol initialized");
+    board_status_t *status = getBoardStatus();
+    status->spi_status = true;
     return ESP_OK; 
 }
 

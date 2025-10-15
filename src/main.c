@@ -25,27 +25,27 @@ void app_main()
     }
 
     /* Test start AP on slaves */
-    #if defined(BOARD_MASTER)
-    static ap_config_t ap = {
-        .ssid = "ESPWROOM32",
-        .password = "espDragonFruit",
-        .channel = 1,
-        .authmode = WIFI_AUTH_WPA2_PSK,
-        .beacon_interval = 300,
-        .max_connection = 5,
-        .pmf_required = false,
-        .pmf_capable = false
-    };
-    CommandSetWifiConfig(ESPWROOM32, &ap, NULL, WIFI_MODE_AP);
+    // #if defined(BOARD_MASTER)
+    // static ap_config_t ap = {
+    //     .ssid = "ESPWROOM32",
+    //     .password = "espDragonFruit",
+    //     .channel = 1,
+    //     .authmode = WIFI_AUTH_WPA2_PSK,
+    //     .beacon_interval = 300,
+    //     .max_connection = 5,
+    //     .pmf_required = false,
+    //     .pmf_capable = false
+    // };
+    // CommandSetWifiConfig(ESPWROOM32, &ap, NULL, WIFI_MODE_AP);
 
-    strcpy((char *)ap.ssid, "ESP32C5");
-    ap.channel = 6;
-    CommandSetWifiConfig(ESP32C5, &ap, NULL, WIFI_MODE_AP);
+    // strcpy((char *)ap.ssid, "ESP32C5");
+    // ap.channel = 6;
+    // CommandSetWifiConfig(ESP32C5, &ap, NULL, WIFI_MODE_AP);
 
-    strcpy((char *)ap.ssid, "ESP32S3");
-    ap.channel = 12;
-    CommandSetWifiConfig(ESP32S3, &ap, NULL, WIFI_MODE_AP);
-    #endif
+    // strcpy((char *)ap.ssid, "ESP32S3");
+    // ap.channel = 12;
+    // CommandSetWifiConfig(ESP32S3, &ap, NULL, WIFI_MODE_AP);
+    // #endif
 
     while (1) 
     {
