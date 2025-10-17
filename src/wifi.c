@@ -10,6 +10,65 @@ static const char *TAG = "WIFI";
 static esp_netif_t *netif_ap = NULL;
 static esp_netif_t *netif_sta = NULL;
 
+static const wifi_country_t country = {
+    .cc = "CN",
+    .schan = 1,
+    .nchan = 14,
+    .policy = WIFI_COUNTRY_POLICY_MANUAL
+};
+
+static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    switch(event_id)
+    {
+        case WIFI_EVENT_WIFI_READY:
+            break;
+
+        case WIFI_EVENT_SCAN_DONE:
+            wifi_event_sta_scan_done_t *e = (wifi_event_sta_scan_done_t *)event_data;
+            // e->status == 0 -> OK, altrimenti errore/cancellata
+            // e->number: numero di AP trovati (può essere limitato da cfg.scan_type/threshold)
+            break;
+
+        case WIFI_EVENT_STA_START:
+            break;
+
+        case WIFI_EVENT_STA_STOP:
+            break;
+
+        case WIFI_EVENT_STA_CONNECTED: {
+            wifi_event_sta_connected_t *e = (wifi_event_sta_connected_t *)event_data;
+            break;
+        }
+        case WIFI_EVENT_STA_DISCONNECTED: {
+            wifi_event_sta_disconnected_t *e = (wifi_event_sta_disconnected_t *)event_data;
+            break;
+        }
+        case WIFI_EVENT_AP_START:
+            break;
+        
+        case WIFI_EVENT_AP_STOP:
+            break;
+
+        case WIFI_EVENT_AP_STACONNECTED: {
+            wifi_event_ap_staconnected_t *e = (wifi_event_ap_staconnected_t *)event_data;
+            break;
+        }
+        case WIFI_EVENT_AP_STADISCONNECTED: {
+            wifi_event_ap_stadisconnected_t *e = (wifi_event_ap_stadisconnected_t *)event_data;
+            break;
+        }
+        case WIFI_EVENT_FTM_REPORT: {
+            wifi_event_ftm_report_t *e = (wifi_event_ftm_report_t *)event_data;
+            break;
+        }
+        case WIFI_EVENT_AP_WRONG_PASSWORD: {
+            wifi_event_ap_wrong_password_t *e = (wifi_event_ap_wrong_password_t *)event_data;
+            break;
+        }
+    }
+}
+
 wifi_config_t *wifi_convert_sta_config(sta_config_t *config_sta)
 {
     static wifi_config_t converted = { 0 };
@@ -144,17 +203,13 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
             return err;
         }
 
-        const wifi_country_t country = {
-            .cc = "CN",
-            .schan = 1,
-            .nchan = 14,
-            .policy = WIFI_COUNTRY_POLICY_MANUAL
-        };
         err = esp_wifi_set_country(&country);
         if(err != ESP_OK) {
             log_message(LOG_LEVEL_ERROR, TAG, "Failed to set WiFi country: %s", esp_err_to_name(err));
             return err;
         }
+
+        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 
         board_status->wifi_init = true;
     }
@@ -221,5 +276,29 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
     board_status->wifi_mode = mode;
 
     log_message(LOG_LEVEL_INFO, TAG, "Wifi initialized and started.");
+    return err;
+}
+
+esp_err_t wifi_set_channel(uint8_t channel)
+{
+    board_status_t *status = getBoardStatus();
+    if(channel > 14 || channel == 0)
+        return ESP_ERR_INVALID_ARG;
+    
+    if(!status->wifi_started)
+        return ESP_ERR_INVALID_STATE;
+
+    esp_err_t err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_BELOW);
+    if(err == ESP_OK) {
+        status->wifi_config_ap.channel = channel;
+        status->wifi_config_sta.channel = channel;
+    }
+    return err;
+}
+
+esp_err_t wifi_scan(wifi_scan_config_t *scan_config)
+{
+    /* If scan_config is NULL default value will be used */
+    esp_err_t err = esp_wifi_scan_start(scan_config, false);
     return err;
 }

@@ -29,6 +29,16 @@ void handle_frame_master(const proto_frame_t *frame)
             }
             break;
         }
+        case CMD_WIFI_CHANNEL_RESPONSE: {
+            proto_wifi_set_channel_t *wifi_set_ch = (proto_wifi_set_channel_t *)frame;
+            board_status_t *slave = getSlaveStatus(frame->header.addr);
+            if(wifi_set_ch->fields.status == ESP_OK)
+            {
+                slave->wifi_config_ap.channel = wifi_set_ch->fields.channel;
+                slave->wifi_config_sta.channel = wifi_set_ch->fields.channel;
+            }
+            break;
+        }
         default: {
             break;
         }
@@ -60,6 +70,17 @@ proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
             wifi_config_response_frame.fields.status = err;
             memset(&response, 0, sizeof(proto_frame_t));
             memcpy(&response, &wifi_config_response_frame, sizeof(proto_wifi_config_t));
+            return &response;
+        }
+        case CMD_WIFI_CHANNEL: {
+            proto_wifi_set_channel_t *wifi_set_ch = (proto_wifi_set_channel_t *)frame;
+            esp_err_t err = wifi_set_channel(wifi_set_ch->fields.channel);
+            proto_wifi_set_channel_t wifi_set_ch_resp = { 0 };
+            wifi_set_ch_resp.header.cmd = CMD_WIFI_CHANNEL_RESPONSE;
+            wifi_set_ch_resp.header.len = sizeof(wifi_set_ch_resp.fields);
+            wifi_set_ch_resp.fields.status = err;
+            memset(&response, 0, sizeof(proto_frame_t));
+            memcpy(&response, &wifi_set_ch_resp, sizeof(proto_wifi_set_channel_t));
             return &response;
         }
         default: {

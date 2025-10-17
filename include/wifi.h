@@ -72,4 +72,10 @@ typedef struct __attribute((packed)) {
  */
 esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint8_t mode);
 
+/**
+ * @brief Set Wifi Channel
+ * @param channel channel to set (1 - 14)
+ */
+esp_err_t wifi_set_channel(uint8_t channel);
+
 #endif // WIFI_H
