@@ -33,10 +33,10 @@ static void add_board_status_json(cJSON *parent, const char *name, const board_s
     // Chip info
     cJSON *chip = cJSON_CreateObject();
     cJSON_AddItemToObject(o, "chip", chip);
-    cJSON_AddNumberToObject(chip, "model",   st->chip.model);     // vedi esp_chip_model_t
-    cJSON_AddNumberToObject(chip, "cores",   st->chip.cores);
-    cJSON_AddNumberToObject(chip, "revision",st->chip.revision);
-    cJSON_AddNumberToObject(chip, "features",st->chip.features);  // bitmask
+    cJSON_AddNumberToObject(chip, "model",   st->chip_model);     // vedi esp_chip_model_t
+    cJSON_AddNumberToObject(chip, "cores",   st->chip_cores);
+    cJSON_AddNumberToObject(chip, "revision",st->chip_revision);
+    cJSON_AddNumberToObject(chip, "features",st->chip_features);  // bitmask
     // RAM
     cJSON *ram = cJSON_CreateObject();
     cJSON_AddItemToObject(o, "ram", ram);

@@ -48,6 +48,8 @@ void handle_frame_master(const proto_frame_t *frame)
 proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
 {
     static proto_frame_t response = { 0 };
+    memset(&response, 0, sizeof(proto_frame_t));
+
     //log_message(LOG_LEVEL_DEBUG, TAG, "Received command=%d with len=%d from master", frame->header.cmd, frame->header.len);
     switch (frame->header.cmd) {
         case CMD_BOARD_STATUS: {
@@ -56,7 +58,6 @@ proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
             board_status_pkt.header.cmd = CMD_BOARD_STATUS_RESPONSE;
             board_status_pkt.header.len = sizeof(board_status_pkt.fields);
             board_status_pkt.fields.status = *board_status;
-            memset(&response, 0, sizeof(proto_frame_t));
             memcpy(&response, &board_status_pkt, sizeof(proto_board_status_t));
             return &response;
         }
@@ -68,7 +69,6 @@ proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
             wifi_config_response_frame.header.len = sizeof(wifi_config_response_frame.fields);
             memcpy(&wifi_config_frame->fields, &wifi_config_response_frame.fields, sizeof(wifi_config_response_frame.fields));
             wifi_config_response_frame.fields.status = err;
-            memset(&response, 0, sizeof(proto_frame_t));
             memcpy(&response, &wifi_config_response_frame, sizeof(proto_wifi_config_t));
             return &response;
         }
@@ -79,7 +79,6 @@ proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
             wifi_set_ch_resp.header.cmd = CMD_WIFI_CHANNEL_RESPONSE;
             wifi_set_ch_resp.header.len = sizeof(wifi_set_ch_resp.fields);
             wifi_set_ch_resp.fields.status = err;
-            memset(&response, 0, sizeof(proto_frame_t));
             memcpy(&response, &wifi_set_ch_resp, sizeof(proto_wifi_set_channel_t));
             return &response;
         }

@@ -7,6 +7,9 @@
 #include "esp_err.h"
 #include "wifi.h"
 
+#define set_board_status for (int _once=(board_status_lock(),0); !_once; _once=(board_status_unlock(),1))
+#define set_board_status_single(field, value) board_status_lock(); field = value; board_status_unlock();
+
 typedef enum {
     WIFI_IDLE = 0,
     WIFI_STA_MODE,
@@ -18,7 +21,10 @@ typedef enum {
 
 typedef struct __attribute((packed)) {
     /* Board info */
-    esp_chip_info_t chip;
+    uint8_t  chip_cores;
+    uint8_t  chip_model;
+    uint16_t  chip_revision;
+    uint32_t chip_features;
 
     /* RAM */
     uint32_t total_internal_memory;
@@ -36,8 +42,15 @@ typedef struct __attribute((packed)) {
     /* WIFI */
     ap_config_t wifi_config_ap;
     sta_config_t wifi_config_sta;
-    wifi_mode_t wifi_mode;
+    uint8_t wifi_mode;
     
+    uint8_t wifi_ready;
+    uint8_t wifi_scan_done;
+    uint8_t wifi_sta_started;
+    uint8_t wifi_sta_connected;
+    uint8_t wifi_ap_started;
+    uint8_t wifi_ap_has_clients;  
+
 } board_status_t;
 
 /**
@@ -55,5 +68,14 @@ board_status_t * getBoardStatus(void);
  */
 board_status_t *getSlaveStatus(int addr);
 
+/**
+ * @brief Lock board status mutex
+ */
+void board_status_lock(void);
+
+/**
+ * @brief Unlock board status mutex
+ */
+void board_status_unlock(void);
 
 #endif // BOARD_H

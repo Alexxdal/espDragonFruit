@@ -18,6 +18,7 @@
 static const char *TAG = "BOARD";
 static TaskHandle_t common_board_task_handle;
 static board_status_t board_status;
+static SemaphoreHandle_t board_status_mtx;
 
 #if defined(BOARD_MASTER)
 static board_status_t slave_status[3] = { 0 };
@@ -29,18 +30,22 @@ static void common_board_task(void *arg)
     /* Get Chip info */
     esp_chip_info_t chip;
     esp_chip_info(&chip);
-    board_status.chip.cores = chip.cores;
-    board_status.chip.features = chip.features;
-    board_status.chip.model = chip.model;
-    board_status.chip.revision = chip.revision;
-    board_status.total_internal_memory = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
-    board_status.largest_contig_internal_block = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
-    board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-    board_status.spiram_size = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+    set_board_status {
+        board_status.chip_cores = chip.cores;
+        board_status.chip_features = chip.features;
+        board_status.chip_model = chip.model;
+        board_status.chip_revision = chip.revision;
+        board_status.total_internal_memory = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+        board_status.largest_contig_internal_block = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+        board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+        board_status.spiram_size = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+    }
 
     while(1)
     {
-        board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+        set_board_status {
+            board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+        }
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -70,7 +75,19 @@ esp_err_t master_init()
         .pmf_capable = false
     };
 
-    err = wifi_set_config(&wifi_config_ap, NULL, WIFI_MODE_AP);
+    static sta_config_t sta_no_pmf = {
+        .ssid = "TestSSID",
+        .password = "TestPassword",
+        .scan_method = WIFI_FAST_SCAN,
+        .bssid_set = 0,
+        .channel = 0,
+        .listen_interval = 0,
+        .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
+        .pmf_capable = true,
+        .pmf_required = false
+    };
+
+    err = wifi_set_config(NULL, &sta_no_pmf, WIFI_MODE_STA);
     ESP_RETURN_ON_ERROR(err, TAG, "wifi_set_config");
 
     err = httpd_server_start();
@@ -102,6 +119,11 @@ esp_err_t slave_three_init()
 esp_err_t board_init(void)
 {
     memset(&board_status, 0, sizeof(board_status_t));
+    board_status_mtx = xSemaphoreCreateMutex();
+    if(board_status_mtx == NULL) {
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to create board status mutex");
+        return ESP_ERR_NO_MEM;
+    }
 
     ESP_ERROR_CHECK(nvs_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -145,3 +167,11 @@ board_status_t *getSlaveStatus(int addr)
     return &slave_status[addr];
 }
 #endif
+
+void board_status_lock(void) {
+     xSemaphoreTake(board_status_mtx, portMAX_DELAY); 
+}
+
+void board_status_unlock(void) { 
+    xSemaphoreGive(board_status_mtx); 
+}

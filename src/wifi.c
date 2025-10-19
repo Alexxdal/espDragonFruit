@@ -10,27 +10,21 @@ static const char *TAG = "WIFI";
 static esp_netif_t *netif_ap = NULL;
 static esp_netif_t *netif_sta = NULL;
 
-static const wifi_country_t country = {
-    .cc = "CN",
-    .schan = 1,
-    .nchan = 14,
-    .policy = WIFI_COUNTRY_POLICY_MANUAL
-};
-
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
+    board_status_t *board_status = getBoardStatus();
     switch(event_id)
     {
-        case WIFI_EVENT_WIFI_READY:
-            break;
-
         case WIFI_EVENT_SCAN_DONE:
             wifi_event_sta_scan_done_t *e = (wifi_event_sta_scan_done_t *)event_data;
+            (void)e;
             // e->status == 0 -> OK, altrimenti errore/cancellata
             // e->number: numero di AP trovati (può essere limitato da cfg.scan_type/threshold)
             break;
 
         case WIFI_EVENT_STA_START:
+            esp_wifi_connect();
+            set_board_status_single(board_status->wifi_sta_started, true);
             break;
 
         case WIFI_EVENT_STA_STOP:
@@ -38,10 +32,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
         case WIFI_EVENT_STA_CONNECTED: {
             wifi_event_sta_connected_t *e = (wifi_event_sta_connected_t *)event_data;
+            (void)e;
+            set_board_status_single(board_status->wifi_sta_connected, true);
             break;
         }
         case WIFI_EVENT_STA_DISCONNECTED: {
             wifi_event_sta_disconnected_t *e = (wifi_event_sta_disconnected_t *)event_data;
+            (void)e;
+            set_board_status_single(board_status->wifi_sta_connected, false);
             break;
         }
         case WIFI_EVENT_AP_START:
@@ -52,18 +50,22 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
         case WIFI_EVENT_AP_STACONNECTED: {
             wifi_event_ap_staconnected_t *e = (wifi_event_ap_staconnected_t *)event_data;
+            (void)e;
             break;
         }
         case WIFI_EVENT_AP_STADISCONNECTED: {
             wifi_event_ap_stadisconnected_t *e = (wifi_event_ap_stadisconnected_t *)event_data;
+            (void)e;
             break;
         }
         case WIFI_EVENT_FTM_REPORT: {
             wifi_event_ftm_report_t *e = (wifi_event_ftm_report_t *)event_data;
+            (void)e;
             break;
         }
         case WIFI_EVENT_AP_WRONG_PASSWORD: {
             wifi_event_ap_wrong_password_t *e = (wifi_event_ap_wrong_password_t *)event_data;
+            (void)e;
             break;
         }
     }
@@ -73,6 +75,7 @@ wifi_config_t *wifi_convert_sta_config(sta_config_t *config_sta)
 {
     static wifi_config_t converted = { 0 };
     if(config_sta != NULL) {
+        memset(&converted, 0, sizeof(converted));
         memcpy(&converted.sta.ssid, &config_sta->ssid, sizeof(config_sta->ssid));
         memcpy(&converted.sta.password, &config_sta->password, sizeof(config_sta->password));
         converted.sta.scan_method = config_sta->scan_method;
@@ -116,6 +119,7 @@ wifi_config_t *wifi_convert_ap_config(ap_config_t *config_ap)
 {
     static wifi_config_t converted = { 0 };
     if(config_ap != NULL) {
+        memset(&converted, 0, sizeof(converted));
         memcpy(&converted.ap.ssid, &config_ap->ssid, sizeof(config_ap->ssid));
         converted.ap.ssid_len = strlen((char *)converted.ap.ssid);
         memcpy(&converted.ap.password, &config_ap->password, sizeof(config_ap->password));
@@ -146,6 +150,12 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
 {
     esp_err_t err = ESP_OK;
 
+    board_status_t *board_status = getBoardStatus();
+    if(board_status == NULL) {
+        log_message(LOG_LEVEL_DEBUG, TAG, "Failed to get board status");
+        return ESP_ERR_INVALID_STATE;
+    }
+
     if(mode == WIFI_MODE_NULL)
     {
         log_message(LOG_LEVEL_DEBUG, TAG, "Wifi mode is null.");
@@ -165,12 +175,6 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
     {
         log_message(LOG_LEVEL_DEBUG, TAG, "AP or STA config are null.");
         return ESP_ERR_INVALID_ARG;
-    }
-
-    board_status_t *board_status = getBoardStatus();
-    if(board_status == NULL) {
-        log_message(LOG_LEVEL_DEBUG, TAG, "Failed to get board status");
-        return ESP_ERR_INVALID_STATE;
     }
 
     /* Start netif interfaces (create both once) */
@@ -203,22 +207,21 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
             return err;
         }
 
-        err = esp_wifi_set_country(&country);
+        err = esp_wifi_set_country_code("CN", true);
         if(err != ESP_OK) {
             log_message(LOG_LEVEL_ERROR, TAG, "Failed to set WiFi country: %s", esp_err_to_name(err));
             return err;
         }
 
         ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
-
-        board_status->wifi_init = true;
+        set_board_status_single(board_status->wifi_init, true);
     }
 
     /* Stop wifi before changing settings (if already started) */
     if(board_status->wifi_started == true)
     {
         esp_wifi_stop();
-        board_status->wifi_started = false;
+        set_board_status_single(board_status->wifi_started, false);
     }
 
     /* Set wifi mode */
@@ -239,23 +242,45 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
     }
 
     /* Set config */
-    if(mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA)
+    if(mode == WIFI_MODE_AP)
     {
         err = esp_wifi_set_config(WIFI_IF_AP, wifi_convert_ap_config(config_ap));
         if(err != ESP_OK) {
             log_message(LOG_LEVEL_ERROR, TAG, "Failed to set SoftAP config: %s", esp_err_to_name(err));
             return err;
         }
-        memcpy(&board_status->wifi_config_ap, config_ap, sizeof(ap_config_t));
+
+        set_board_status {
+            memcpy(&board_status->wifi_config_ap, config_ap, sizeof(ap_config_t));
+        }
     }
-    if(mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA)
+    else if(mode == WIFI_MODE_STA)
     {
         err = esp_wifi_set_config(WIFI_IF_STA, wifi_convert_sta_config(config_sta));
         if(err != ESP_OK) {
             log_message(LOG_LEVEL_ERROR, TAG, "Failed to set STA config: %s", esp_err_to_name(err));
             return err;
         }
-        memcpy(&board_status->wifi_config_sta, config_sta, sizeof(sta_config_t));
+        set_board_status {
+            memcpy(&board_status->wifi_config_sta, config_sta, sizeof(sta_config_t));
+        }
+    }
+    else if(mode == WIFI_MODE_APSTA)
+    {
+        err = esp_wifi_set_config(WIFI_IF_AP, wifi_convert_ap_config(config_ap));
+        if(err != ESP_OK) {
+            log_message(LOG_LEVEL_ERROR, TAG, "Failed to set SoftAP config: %s", esp_err_to_name(err));
+            return err;
+        }
+        err = esp_wifi_set_config(WIFI_IF_STA, wifi_convert_sta_config(config_sta));
+        if(err != ESP_OK) {
+            log_message(LOG_LEVEL_ERROR, TAG, "Failed to set STA config: %s", esp_err_to_name(err));
+            return err;
+        }
+        set_board_status {
+            memcpy(&board_status->wifi_config_ap, config_ap, sizeof(ap_config_t));
+            memcpy(&board_status->wifi_config_sta, config_sta, sizeof(sta_config_t));
+        }
     }
     
     /* Start wifi */
@@ -272,8 +297,8 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
         return err;
     }
 
-    board_status->wifi_started = true;
-    board_status->wifi_mode = mode;
+    set_board_status_single(board_status->wifi_started, true);
+    set_board_status_single(board_status->wifi_mode, mode);
 
     log_message(LOG_LEVEL_INFO, TAG, "Wifi initialized and started.");
     return err;
@@ -290,8 +315,10 @@ esp_err_t wifi_set_channel(uint8_t channel)
 
     esp_err_t err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_BELOW);
     if(err == ESP_OK) {
-        status->wifi_config_ap.channel = channel;
-        status->wifi_config_sta.channel = channel;
+        set_board_status {
+            status->wifi_config_ap.channel = channel;
+            status->wifi_config_sta.channel = channel;
+        }
     }
     return err;
 }
