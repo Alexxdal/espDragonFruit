@@ -75,19 +75,7 @@ esp_err_t master_init()
         .pmf_capable = false
     };
 
-    static sta_config_t sta_no_pmf = {
-        .ssid = "TestSSID",
-        .password = "TestPassword",
-        .scan_method = WIFI_FAST_SCAN,
-        .bssid_set = 0,
-        .channel = 0,
-        .listen_interval = 0,
-        .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
-        .pmf_capable = true,
-        .pmf_required = false
-    };
-
-    err = wifi_set_config(NULL, &sta_no_pmf, WIFI_MODE_STA);
+    err = wifi_set_config(&wifi_config_ap, NULL, WIFI_MODE_AP);
     ESP_RETURN_ON_ERROR(err, TAG, "wifi_set_config");
 
     err = httpd_server_start();
