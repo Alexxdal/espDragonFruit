@@ -1,0 +1,33 @@
+{
+    "files.associations": {
+        "*.json": "cpp",
+        "wifi.h": "c",
+        "esp_netif.h": "c",
+        "nvs_config.h": "c",
+        "nvs_flash.h": "c",
+        "spi_master.h": "c",
+        "spi.h": "c",
+        "board.h": "c",
+        "esp_err.h": "c",
+        "esp_check.h": "c",
+        "log.h": "c",
+        "task.h": "c",
+        "i2c_master.h": "c",
+        "freertos.h": "c",
+        "i2c_proto.h": "c",
+        "queue.h": "c",
+        "cstdint": "c",
+        "i2c.h": "c",
+        "gpio.h": "c",
+        "spi_common.h": "c",
+        "spi_proto.h": "c",
+        "format": "c",
+        "cstdlib": "c",
+        "esp_spiffs.h": "c",
+        "netif.h": "c",
+        "esp_chip_info.h": "c",
+        "esp_log.h": "c",
+        "commandmng.h": "c",
+        "compare": "c"
+    }
+}
