@@ -4,7 +4,11 @@
 #include "esp_err.h"
 #include "esp_wifi.h"
 
+#define WIFI_SCAN_MAX_AP 20
 
+/**
+ * @brief Access Point configuration structure
+ */
 typedef struct __attribute((packed)) {
     uint8_t ssid[32];
     uint8_t password[64];
@@ -27,7 +31,9 @@ typedef struct __attribute((packed)) {
     uint16_t gtk_rekey_interval;
 } ap_config_t;
 
-
+/**
+ * @brief Station configuration structure
+ */
 typedef struct __attribute((packed)) {
     uint8_t ssid[32];
     uint8_t password[64];
@@ -65,6 +71,55 @@ typedef struct __attribute((packed)) {
 } sta_config_t;
 
 /**
+ * @brief Scan result structure
+ */
+typedef struct __attribute((packed)) {
+    uint8_t bssid[6];
+    uint8_t ssid[33];
+    uint8_t primary_channel;
+    uint8_t secondary_channel;
+    int8_t rssi;
+    uint8_t authmode;
+    uint8_t pairwise_cipher;
+    uint8_t group_cipher;
+    uint8_t ant;
+    uint8_t phy_11b;
+    uint8_t phy_11g;
+    uint8_t phy_11n;
+    uint8_t phy_lr;
+    uint8_t phy_11a;
+    uint8_t phy_11ac;
+    uint8_t phy_11ax;
+    uint8_t wps;
+    uint8_t ftm_responder;
+    uint8_t ftm_initiator;
+    /* wifi_country_t */
+    char country_code[3];
+    uint8_t schan;
+    uint8_t nchan;
+    uint8_t max_tx_power;
+    uint8_t policy;
+    uint32_t wifi_5g_channel_mask;
+    /* wifi_he_ap_info_t */
+    uint8_t bss_color;
+    uint8_t partial_bss_color;
+    uint8_t bss_color_disabled;
+    uint8_t bssid_index;
+    /* --------------- */
+    uint8_t bandwidth;
+    uint8_t vht_ch_freq1;
+    uint8_t vht_ch_freq2;
+} scan_result_t;
+
+/**
+ * @brief Wifi scan result structure
+ */
+typedef struct __attribute((packed)) {
+    uint8_t ap_num;
+    scan_result_t results[WIFI_SCAN_MAX_AP];
+} scan_results_t;
+
+/**
  * @brief Set wifi config and start
  * @param config_ap Wifi AP config
  * @param config_sta Wifi STA config
@@ -77,5 +132,17 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
  * @param channel channel to set (1 - 14)
  */
 esp_err_t wifi_set_channel(uint8_t channel);
+
+/**
+ * @brief Start Wifi Scan
+ * @param scan_config Wifi scan configuration (NULL for default)
+ */
+esp_err_t wifi_scan(wifi_scan_config_t *scan_config);
+
+/**
+ * @brief Get Wifi Scan Results
+ * @param out_results Pointer to store scan results - scan_results_t
+ */
+esp_err_t wifi_get_scan_results(scan_results_t *out_results);
 
 #endif // WIFI_H

@@ -24,39 +24,8 @@ void app_main()
         return;
     }
 
-    /* Test start AP on slaves */
-    #if defined(BOARD_MASTER)
-    static sta_config_t sta_no_pmf = {
-        .ssid = "TestSSID",
-        .password = "TestPassword",
-        .scan_method = WIFI_FAST_SCAN,
-        .bssid_set = 0,
-        .channel = 0,
-        .listen_interval = 0,
-        .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
-        .pmf_capable = true,
-        .pmf_required = false
-    };
-
-    static sta_config_t sta_yes_pmf = {
-        .ssid = "TestSSID",
-        .password = "TestPassword",
-        .scan_method = WIFI_ALL_CHANNEL_SCAN,
-        .bssid_set = 0,
-        .channel = 0,
-        .listen_interval = 0,
-        .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
-        .pmf_capable = true,
-        .pmf_required = true
-    };
-    
-    CommandSetWifiConfig(ESPWROOM32, NULL, &sta_no_pmf, WIFI_MODE_STA);
-    CommandSetWifiConfig(ESP32C5, NULL, &sta_yes_pmf, WIFI_MODE_STA);
-    CommandSetWifiConfig(ESP32S3, NULL, &sta_yes_pmf, WIFI_MODE_STA);
-    #endif
-
     while (1) 
     {
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(portMAX_DELAY);
     }
 }
