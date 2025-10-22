@@ -34,9 +34,21 @@ void log_message(log_level_t level, const char *tag, const char *format, ...)
         default:                level_str = "UNKNOWN"; break;
     }
 
+    #if defined(BOARD_MASTER)
+    const char *board_type = "MASTER";
+    #elif defined(BOARD_SLAVE1)
+    const char *board_type = "SLAVE1";
+    #elif defined(BOARD_SLAVE2)
+    const char *board_type = "SLAVE2";
+    #elif defined(BOARD_SLAVE3)
+    const char *board_type = "SLAVE3";
+    #else
+    const char *board_type = "UNKNOWN";
+    #endif
+
     va_list args;
     va_start(args, format);
-    printf("[%s] %s: ", level_str, tag);
+    printf("[%s][%s] %s: ", board_type, level_str, tag);
     vprintf(format, args);
     printf("\n");
     va_end(args);

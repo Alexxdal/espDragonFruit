@@ -60,6 +60,7 @@ esp_err_t spi_proto_init(void)
     }
 #if defined(BOARD_MASTER)
     xTaskCreate(proto_master_task, "proto_master_task", 4096, NULL, 5, NULL);
+    xTaskCreate(proto_master_polling_task, "proto_master_polling_task", 4096, NULL, 6, NULL);
 #else
     xTaskCreate(proto_slave_task, "proto_slave_task", 4096, NULL, 5, NULL);
 #endif
@@ -69,9 +70,9 @@ esp_err_t spi_proto_init(void)
     return ESP_OK; 
 }
 
-esp_err_t proto_send_frame(int slave_addr, const void *frame)
+esp_err_t proto_send_frame(int slave_addr, void *frame)
 {
-    const proto_frame_t *in = (const proto_frame_t *)frame;
+    proto_frame_t *in = (proto_frame_t *)frame;
 
     if(in->header.len > PROTO_MAX_PAYLOAD)
     {
@@ -79,15 +80,10 @@ esp_err_t proto_send_frame(int slave_addr, const void *frame)
         return ESP_ERR_INVALID_ARG;
     }
 
-    proto_frame_t item;
-    memset(&item, 0, sizeof(item));
-    size_t bytes = sizeof(proto_header_t) + in->header.len;
-    memcpy(&item, in, bytes);
+    in->header.addr = slave_addr;
+    in->header.crc  = crc8_atm(((const uint8_t *)in) + 1, (sizeof(proto_header_t) - 1) + in->header.len);
 
-    item.header.addr = slave_addr;
-    item.header.crc  = crc8_atm(((const uint8_t *)&item) + 1, (sizeof(proto_header_t) - 1) + item.header.len);
-
-    if(xQueueSend(tx_frame_queue, &item, 100) != pdTRUE)
+    if(xQueueSend(tx_frame_queue, in, 100) != pdTRUE)
     {
         log_message(LOG_LEVEL_DEBUG, TAG, "Failed to add frame to queue");
         return ESP_ERR_NO_MEM;
@@ -96,22 +92,38 @@ esp_err_t proto_send_frame(int slave_addr, const void *frame)
 }
 
 #if defined(BOARD_MASTER)
-void proto_master_task(void *arg)
+void proto_master_polling_task(void *arg)
 {
     (void)arg;
-    proto_board_status_t status_req = { 0 };
-    status_req.header.cmd = CMD_BOARD_STATUS;
+    static proto_board_status_t poll_frame;
+    memset(&poll_frame, 0, sizeof(poll_frame));
+    poll_frame.header.cmd = CMD_BOARD_STATUS;
+    poll_frame.header.len = 0;
 
     while(1)
     {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        esp_err_t err = proto_send_frame(BROADCAST_ADDR, &poll_frame);
+        if(err != ESP_OK)
+        {
+            log_message(LOG_LEVEL_DEBUG, TAG, "Failed to send poll frame.");
+        }
+    }
+}
+
+void proto_master_task(void *arg)
+{
+    (void)arg;
+    while(1)
+    {
         /* Check if there are some message in the queue, if there are no message send poll */
-        if(xQueueReceive(tx_frame_queue, &tx_frame, 50) == pdTRUE)
+        if(xQueueReceive(tx_frame_queue, &tx_frame, portMAX_DELAY) == pdTRUE)
         {
             int dst = tx_frame.header.addr;
             if (dst >= ESPWROOM32 && dst <= ESP32S3) 
             {
                 int idx = dst - 1;
-                esp_err_t e = spi_submit(idx, (uint8_t *)&tx_frame, (uint8_t *)&rx_frame, 100);
+                esp_err_t e = spi_submit(idx, (uint8_t *)&tx_frame, (uint8_t *)&rx_frame, 0); // Master has no tick to wait
                 if (e == ESP_OK) {
                     frame_sent++;
                     if (rx_frame.header.cmd != 0xffff && rx_frame.header.cmd != 0x0) {
@@ -121,7 +133,7 @@ void proto_master_task(void *arg)
                             handle_frame_master(&rx_frame);
                         } else {
                             frame_crc_error++;
-                            log_message(LOG_LEVEL_DEBUG, TAG, "Frame with CRC Error: %d from slave %d", frame_crc_error, rx_frame.header.addr);
+                            log_message(LOG_LEVEL_DEBUG, TAG, "Frame with CRC Error: %d from slave %d cmd=%02X len=%d.", frame_crc_error, rx_frame.header.addr, rx_frame.header.crc, rx_frame.header.len);
                         }
                     }
                 }
@@ -129,7 +141,7 @@ void proto_master_task(void *arg)
             else if (dst == BROADCAST_ADDR) 
             {
                 for (int i = 0; i < 3; i++) {
-                    esp_err_t e = spi_submit(i, (uint8_t *)&tx_frame, (uint8_t *)&rx_frame, 100);
+                    esp_err_t e = spi_submit(i, (uint8_t *)&tx_frame, (uint8_t *)&rx_frame, 0); // Master has no tick to wait
                     if (e == ESP_OK) {
                         frame_sent++;
                         if (rx_frame.header.cmd != 0xffff && rx_frame.header.cmd != 0x0) {
@@ -139,16 +151,12 @@ void proto_master_task(void *arg)
                                 handle_frame_master(&rx_frame);
                             } else {
                                 frame_crc_error++;
-                                log_message(LOG_LEVEL_DEBUG, TAG, "Frame with CRC Error: %d from slave %d", frame_crc_error, rx_frame.header.addr);
+                                log_message(LOG_LEVEL_DEBUG, TAG, "Frame with CRC Error: %d from slave %d cmd=%02X len=%d.", frame_crc_error, rx_frame.header.addr, rx_frame.header.crc, rx_frame.header.len);
                             }
                         }
                     }
                 }
             }
-        }
-        else
-        {
-            proto_send_frame(BROADCAST_ADDR, &status_req);
         }
     }
 }
@@ -183,7 +191,7 @@ void proto_slave_task(void *arg)
                 }
                 else {
                     frame_crc_error++;
-                    log_message(LOG_LEVEL_DEBUG, TAG, "Frame with CRC Error: %d", frame_crc_error);
+                    log_message(LOG_LEVEL_DEBUG, TAG, "Frame with CRC Error: %d addr=%d cmd=%02X len=%d.", frame_crc_error, rx_frame.header.addr, rx_frame.header.cmd, rx_frame.header.len);
                 }
             }
         }

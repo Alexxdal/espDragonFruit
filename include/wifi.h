@@ -111,6 +111,16 @@ typedef struct __attribute((packed)) {
     uint8_t vht_ch_freq2;
 } scan_result_t;
 
+typedef struct __attribute((packed)) {
+    uint8_t channel;
+    uint8_t show_hidden;
+    uint8_t scan_type;
+    uint8_t scan_time;
+    uint16_t ghz_2_channel_bitmap;
+    uint32_t ghz_5_channel_bitmap;
+    uint16_t alignment_bytes; // Padding for alignment
+} scan_config_t;
+
 /**
  * @brief Wifi scan result structure
  */
@@ -137,12 +147,13 @@ esp_err_t wifi_set_channel(uint8_t channel);
  * @brief Start Wifi Scan
  * @param scan_config Wifi scan configuration (NULL for default)
  */
-esp_err_t wifi_scan(wifi_scan_config_t *scan_config);
+esp_err_t wifi_scan(scan_config_t *scan_config);
 
 /**
  * @brief Get Wifi Scan Results
  * @param out_results Pointer to store scan results - scan_results_t
  */
-esp_err_t wifi_get_scan_results(scan_results_t *out_results);
+esp_err_t wifi_scan_get_results(scan_results_t *out_results);
+
 
 #endif // WIFI_H

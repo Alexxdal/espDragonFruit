@@ -42,12 +42,12 @@ typedef struct __attribute((packed)) {
     uint8_t wifi_scan_started;
     uint8_t wifi_scan_done;
     uint8_t wifi_scan_ap_num;
-    uint8_t wifi_scan_result;
+    uint8_t wifi_scan_error;
 
     uint8_t wifi_sta_started;
     uint8_t wifi_sta_connected;
     uint8_t wifi_ap_started;
-    uint8_t wifi_ap_has_clients;  
+    uint8_t wifi_ap_has_clients;
 
 } board_status_t;
 

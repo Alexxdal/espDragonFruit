@@ -4,12 +4,12 @@
 #include "wifi.h"
 #include "log.h"
 #include "netif.h"
+#include "commandMng.h"
 
 static const char *TAG = "WIFI";
 
 static esp_netif_t *netif_ap = NULL;
 static esp_netif_t *netif_sta = NULL;
-static scan_results_t scan_results = { 0 };
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -23,15 +23,22 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                     board_status->wifi_scan_started = false;
                     board_status->wifi_scan_done = true;
                     board_status->wifi_scan_ap_num = 0;
-                    board_status->wifi_scan_result = 0;
+                    board_status->wifi_scan_error = 1;
                 };
             } else {
                 set_board_status {
                     board_status->wifi_scan_started = false;
                     board_status->wifi_scan_done = true;
                     board_status->wifi_scan_ap_num = e->number;
-                    board_status->wifi_scan_result = 1;
+                    board_status->wifi_scan_error = 0;
                 };
+                #if !defined(BOARD_MASTER)
+                scan_results_t results;
+                esp_err_t err = wifi_scan_get_results(&results);
+                if(err == ESP_OK) {
+                    CommandWifiScanResults(ESP32S3, &results);
+                }
+                #endif
             }           
             break;
 
@@ -342,7 +349,7 @@ esp_err_t wifi_set_channel(uint8_t channel)
     return err;
 }
 
-esp_err_t wifi_scan(wifi_scan_config_t *scan_config)
+esp_err_t wifi_scan(scan_config_t *scan_config)
 {
     board_status_t *status = getBoardStatus();
     if(status->wifi_init == false) {
@@ -354,7 +361,7 @@ esp_err_t wifi_scan(wifi_scan_config_t *scan_config)
         return ESP_ERR_INVALID_STATE;
     }
     if(status->wifi_sta_started == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant scan, WiFi STA not started");
+        log_message(LOG_LEVEL_ERROR, TAG, "Cant scan, WiFi STA not started (need STA or APSTA mode)");
         return ESP_ERR_INVALID_STATE;
     }
     if(status->wifi_scan_started == true) {
@@ -362,15 +369,39 @@ esp_err_t wifi_scan(wifi_scan_config_t *scan_config)
         return ESP_ERR_INVALID_STATE;
     }
     /* If scan_config is NULL default value will be used */
-    esp_err_t err = esp_wifi_scan_start(scan_config, false);
+    wifi_scan_config_t esp_scan_config = { 0 };
+    if(scan_config != NULL) {
+        esp_scan_config.channel = scan_config->channel;
+        esp_scan_config.show_hidden = scan_config->show_hidden;
+        esp_scan_config.scan_type = scan_config->scan_type;
+        esp_scan_config.scan_time.active.min = scan_config->scan_time;
+        esp_scan_config.scan_time.active.max = scan_config->scan_time;
+        esp_scan_config.channel_bitmap.ghz_2_channels = scan_config->ghz_2_channel_bitmap;
+        esp_scan_config.channel_bitmap.ghz_5_channels = scan_config->ghz_5_channel_bitmap;
+    } else {
+        esp_scan_config.ssid = NULL;
+        esp_scan_config.bssid = NULL;
+        esp_scan_config.channel = 0;
+        esp_scan_config.show_hidden = true;
+        esp_scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+        esp_scan_config.scan_time.active.min = 100;
+        esp_scan_config.scan_time.active.max = 300;
+    }
+    esp_err_t err = esp_wifi_scan_start(&esp_scan_config, false);
     if(err != ESP_OK) {
+        set_board_status {
+            status->wifi_scan_started = false;
+            status->wifi_scan_done = false;
+            status->wifi_scan_ap_num = 0;
+            status->wifi_scan_error = 1;
+        }
         log_message(LOG_LEVEL_ERROR, TAG, "Failed to start WiFi scan: %s", esp_err_to_name(err));
     } else {
         set_board_status {
             status->wifi_scan_started = true;
             status->wifi_scan_done = false;
             status->wifi_scan_ap_num = 0;
-            status->wifi_scan_result = 0;
+            status->wifi_scan_error = 0;
         }
     }
     return err;
@@ -395,8 +426,8 @@ esp_err_t wifi_scan_get_results(scan_results_t *out_results)
         log_message(LOG_LEVEL_ERROR, TAG, "Cant get scan results, WiFi scan not done");
         return ESP_ERR_INVALID_STATE;
     }
-    if(status->wifi_scan_result == 0) {
-        log_message(LOG_LEVEL_WARN, TAG, "WiFi scan completed with no results");
+    if(status->wifi_scan_error == 1) {
+        log_message(LOG_LEVEL_WARN, TAG, "WiFi scan ended with error");
         return ESP_ERR_NOT_FOUND;
     }
 

@@ -24,8 +24,20 @@ void app_main()
         return;
     }
 
-    while (1) 
+    #if defined(BOARD_MASTER)
+    sta_config_t sta_config = {
+        .ssid = "",
+        .password = "",
+        .pmf_capable = 1,
+        .pmf_required = 0,
+    };
+    CommandSetWifiConfig(ESP32S3, NULL, &sta_config, WIFI_MODE_STA);
+    CommandSetWifiConfig(ESP32C5, NULL, &sta_config, WIFI_MODE_STA);
+    CommandWifiScan(ESP32S3, NULL);
+    #endif
+
+    while (1)
     {
-        vTaskDelay(portMAX_DELAY);
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
