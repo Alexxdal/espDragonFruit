@@ -32,10 +32,10 @@ esp_err_t spi_init(void)
         spi_device_interface_config_t device = {
             .mode = 1,
             .clock_source = SPI_CLK_SRC_DEFAULT,
-            .duty_cycle_pos = 200,
-            .cs_ena_pretrans = 16,
-            .cs_ena_posttrans = 16,
-            .clock_speed_hz =  10000000,
+            .duty_cycle_pos = 150,
+            .cs_ena_pretrans = 32,
+            .cs_ena_posttrans = 32,
+            .clock_speed_hz =  5000000,
             .spics_io_num = slave_cs[i],
             .queue_size = 16
         };

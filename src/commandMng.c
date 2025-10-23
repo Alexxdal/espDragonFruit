@@ -58,20 +58,22 @@ void handle_frame_master(proto_frame_t *frame)
             break;
         }
         default: {
+            log_message(LOG_LEVEL_DEBUG, TAG, "Unknown/Unexpected cmd=%d addr=%d (len=%d)", frame->header.cmd, frame->header.addr, frame->header.len);
             break;
         }
     }
 }
 #elif defined(BOARD_SLAVE1) || defined(BOARD_SLAVE2) || defined(BOARD_SLAVE3)
-proto_frame_t *handle_frame_slave(proto_frame_t *frame)
+proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
 {
     static proto_frame_t response = { 0 };
     memset(&response, 0, sizeof(proto_frame_t));
+    memcpy(&response, frame, sizeof(proto_frame_t));
 
     //log_message(LOG_LEVEL_DEBUG, TAG, "Received command=%d with len=%d from master", frame->header.cmd, frame->header.len);
     switch (frame->header.cmd) {
         case CMD_BOARD_STATUS: {
-            proto_board_status_t *board_status_pkt = (proto_board_status_t *)frame;
+            proto_board_status_t *board_status_pkt = (proto_board_status_t *)&response;
             board_status_t *board_status = getBoardStatus();
             board_status_pkt->header.cmd = CMD_BOARD_STATUS_RESPONSE;
             board_status_pkt->header.len = sizeof(board_status_pkt->fields);
@@ -80,7 +82,7 @@ proto_frame_t *handle_frame_slave(proto_frame_t *frame)
             return &response;
         }
         case CMD_WIFI_CONFIG: {
-            proto_wifi_config_t *wifi_config_frame = (proto_wifi_config_t *)frame;
+            proto_wifi_config_t *wifi_config_frame = (proto_wifi_config_t *)&response;
             esp_err_t err = wifi_set_config(&wifi_config_frame->fields.wifi_config_ap, &wifi_config_frame->fields.wifi_config_sta, wifi_config_frame->fields.wifi_mode);
             wifi_config_frame->header.cmd  = CMD_WIFI_CONFIG_RESPONSE;
             wifi_config_frame->header.len = sizeof(wifi_config_frame->fields);
@@ -89,7 +91,7 @@ proto_frame_t *handle_frame_slave(proto_frame_t *frame)
             return &response;
         }
         case CMD_WIFI_CHANNEL: {
-            proto_wifi_set_channel_t *wifi_set_ch = (proto_wifi_set_channel_t *)frame;
+            proto_wifi_set_channel_t *wifi_set_ch = (proto_wifi_set_channel_t *)&response;
             esp_err_t err = wifi_set_channel(wifi_set_ch->fields.channel);
             wifi_set_ch->header.cmd = CMD_WIFI_CHANNEL_RESPONSE;
             wifi_set_ch->header.len = sizeof(wifi_set_ch->fields);
@@ -98,11 +100,8 @@ proto_frame_t *handle_frame_slave(proto_frame_t *frame)
             return &response;
         }
         case CMD_WIFI_SCAN: {
-            proto_wifi_scan_t *wifi_scan_frame = (proto_wifi_scan_t *)frame;
+            proto_wifi_scan_t *wifi_scan_frame = (proto_wifi_scan_t *)&response;
             esp_err_t err = wifi_scan(&wifi_scan_frame->fields.scan_config);
-            if(err != ESP_OK) {
-                log_message(LOG_LEVEL_ERROR, TAG, "Failed to start WiFi scan: %s", esp_err_to_name(err));
-            }
             wifi_scan_frame->header.cmd = CMD_WIFI_SCAN_RESPONSE;
             wifi_scan_frame->header.len = sizeof(wifi_scan_frame->fields);
             wifi_scan_frame->fields.status = err;
@@ -110,6 +109,7 @@ proto_frame_t *handle_frame_slave(proto_frame_t *frame)
             return &response;
         }
         default: {
+            log_message(LOG_LEVEL_DEBUG, TAG, "Unknown/Unexpected cmd=%d addr=%d (len=%d)", frame->header.cmd, frame->header.addr, frame->header.len);
             break;
         }
     }

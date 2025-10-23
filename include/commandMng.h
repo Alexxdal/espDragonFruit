@@ -5,7 +5,7 @@
 
 void handle_frame_master(proto_frame_t *frame);
 
-proto_frame_t *handle_frame_slave(proto_frame_t *frame);
+proto_frame_t *handle_frame_slave(const proto_frame_t *frame);
 
 /**
  * @brief Command used to send Wifi configuration to slave device

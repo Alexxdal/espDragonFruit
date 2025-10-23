@@ -118,7 +118,6 @@ typedef struct __attribute((packed)) {
     uint8_t scan_time;
     uint16_t ghz_2_channel_bitmap;
     uint32_t ghz_5_channel_bitmap;
-    uint16_t alignment_bytes; // Padding for alignment
 } scan_config_t;
 
 /**

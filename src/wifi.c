@@ -11,6 +11,17 @@ static const char *TAG = "WIFI";
 static esp_netif_t *netif_ap = NULL;
 static esp_netif_t *netif_sta = NULL;
 
+static void wifi_worker_task(void *arg) {
+    (void)arg;
+    scan_results_t results;
+    if (wifi_scan_get_results(&results) == ESP_OK) {
+        #if !defined(BOARD_MASTER)
+        CommandWifiScanResults(SLAVE_ADDR, &results);
+        #endif
+    }
+    vTaskDelete(NULL);
+}
+
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     board_status_t *board_status = getBoardStatus();
@@ -32,14 +43,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                     board_status->wifi_scan_ap_num = e->number;
                     board_status->wifi_scan_error = 0;
                 };
-                #if !defined(BOARD_MASTER)
-                scan_results_t results;
-                esp_err_t err = wifi_scan_get_results(&results);
-                if(err == ESP_OK) {
-                    CommandWifiScanResults(ESP32S3, &results);
-                }
-                #endif
-            }           
+                xTaskCreate(wifi_worker_task, "wifi_worker", 8192, NULL, 5, NULL);
+            }
             break;
 
         case WIFI_EVENT_STA_START:
@@ -352,6 +357,8 @@ esp_err_t wifi_set_channel(uint8_t channel)
 esp_err_t wifi_scan(scan_config_t *scan_config)
 {
     board_status_t *status = getBoardStatus();
+    esp_err_t err = ESP_OK;
+
     if(status->wifi_init == false) {
         log_message(LOG_LEVEL_ERROR, TAG, "Cant Scan, WiFi not initialized");
         return ESP_ERR_INVALID_STATE;
@@ -378,17 +385,19 @@ esp_err_t wifi_scan(scan_config_t *scan_config)
         esp_scan_config.scan_time.active.max = scan_config->scan_time;
         esp_scan_config.channel_bitmap.ghz_2_channels = scan_config->ghz_2_channel_bitmap;
         esp_scan_config.channel_bitmap.ghz_5_channels = scan_config->ghz_5_channel_bitmap;
+        err = esp_wifi_scan_start(&esp_scan_config, false);
     } else {
-        esp_scan_config.ssid = NULL;
-        esp_scan_config.bssid = NULL;
-        esp_scan_config.channel = 0;
-        esp_scan_config.show_hidden = true;
-        esp_scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-        esp_scan_config.scan_time.active.min = 100;
-        esp_scan_config.scan_time.active.max = 300;
+        err = esp_wifi_scan_start(NULL, false);
     }
-    esp_err_t err = esp_wifi_scan_start(&esp_scan_config, false);
-    if(err != ESP_OK) {
+    if(err == ESP_OK) {
+        set_board_status {
+            status->wifi_scan_started = true;
+            status->wifi_scan_done = false;
+            status->wifi_scan_ap_num = 0;
+            status->wifi_scan_error = 0;
+        }
+        log_message(LOG_LEVEL_INFO, TAG, "Wifi Scan Started.");
+    } else {
         set_board_status {
             status->wifi_scan_started = false;
             status->wifi_scan_done = false;
@@ -396,13 +405,6 @@ esp_err_t wifi_scan(scan_config_t *scan_config)
             status->wifi_scan_error = 1;
         }
         log_message(LOG_LEVEL_ERROR, TAG, "Failed to start WiFi scan: %s", esp_err_to_name(err));
-    } else {
-        set_board_status {
-            status->wifi_scan_started = true;
-            status->wifi_scan_done = false;
-            status->wifi_scan_ap_num = 0;
-            status->wifi_scan_error = 0;
-        }
     }
     return err;
 }

@@ -33,7 +33,7 @@ void app_main()
     };
     CommandSetWifiConfig(ESP32S3, NULL, &sta_config, WIFI_MODE_STA);
     CommandSetWifiConfig(ESP32C5, NULL, &sta_config, WIFI_MODE_STA);
-    CommandWifiScan(ESP32S3, NULL);
+    CommandWifiScan(BROADCAST_ADDR, NULL);
     #endif
 
     while (1)

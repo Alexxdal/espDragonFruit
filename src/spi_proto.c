@@ -137,6 +137,7 @@ void proto_master_task(void *arg)
                         }
                     }
                 }
+                vTaskDelay(10);
             }
             else if (dst == BROADCAST_ADDR) 
             {
@@ -155,6 +156,7 @@ void proto_master_task(void *arg)
                             }
                         }
                     }
+                    vTaskDelay(10);
                 }
             }
         }
