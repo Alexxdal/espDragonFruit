@@ -106,6 +106,8 @@ esp_err_t slave_three_init()
 
 esp_err_t board_init(void)
 {
+    log_init(LOG_LEVEL_DEBUG);
+
     memset(&board_status, 0, sizeof(board_status_t));
     board_status_mtx = xSemaphoreCreateMutex();
     if(board_status_mtx == NULL) {

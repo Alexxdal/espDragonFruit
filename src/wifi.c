@@ -10,16 +10,40 @@ static const char *TAG = "WIFI";
 
 static esp_netif_t *netif_ap = NULL;
 static esp_netif_t *netif_sta = NULL;
+static TaskHandle_t s_wifi_worker = NULL;
+static scan_results_t results = { 0 };
 
-static void wifi_worker_task(void *arg) {
+static void wifi_worker_task(void *arg) 
+{
     (void)arg;
-    scan_results_t results;
-    if (wifi_scan_get_results(&results) == ESP_OK) {
-        #if !defined(BOARD_MASTER)
-        CommandWifiScanResults(SLAVE_ADDR, &results);
-        #endif
+    board_status_t *board_status = getBoardStatus();
+    while(1)
+    {
+        uint32_t scan_result = 0;
+        xTaskNotifyWait(0, 0xFFFFFFFF, &scan_result, portMAX_DELAY);
+
+        if(scan_result == 0) {
+            set_board_status {
+                board_status->wifi_scan_started = false;
+                board_status->wifi_scan_done = true;
+                board_status->wifi_scan_error = 0;
+            };
+            if (wifi_scan_get_results(&results) == ESP_OK) {
+                #if defined(BOARD_MASTER)
+                //TODO: Master handle scan results
+                #else
+                CommandWifiScanResults(SLAVE_ADDR, &results);
+                #endif
+            }
+        }
+        else {
+            set_board_status {
+                board_status->wifi_scan_started = false;
+                board_status->wifi_scan_done = true;
+                board_status->wifi_scan_error = 1;
+            };
+        }
     }
-    vTaskDelete(NULL);
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -29,22 +53,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     {
         case WIFI_EVENT_SCAN_DONE:
             wifi_event_sta_scan_done_t *e = (wifi_event_sta_scan_done_t *)event_data;
-            if(e->status != 0) {
-                set_board_status {
-                    board_status->wifi_scan_started = false;
-                    board_status->wifi_scan_done = true;
-                    board_status->wifi_scan_ap_num = 0;
-                    board_status->wifi_scan_error = 1;
-                };
-            } else {
-                set_board_status {
-                    board_status->wifi_scan_started = false;
-                    board_status->wifi_scan_done = true;
-                    board_status->wifi_scan_ap_num = e->number;
-                    board_status->wifi_scan_error = 0;
-                };
-                xTaskCreate(wifi_worker_task, "wifi_worker", 8192, NULL, 5, NULL);
-            }
+            xTaskNotify(s_wifi_worker, e->status, eSetValueWithOverwrite);
             break;
 
         case WIFI_EVENT_STA_START:
@@ -238,6 +247,15 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
             return err;
         }
 
+        /* Start Scan Result Worker */
+        if(s_wifi_worker == NULL) {
+            xTaskCreate(wifi_worker_task, "wifi_worker", 8192, NULL, 5, &s_wifi_worker);
+            if(s_wifi_worker == NULL) {
+                log_message(LOG_LEVEL_ERROR, TAG, "Failed to create WiFi worker task");
+                return ESP_ERR_NO_MEM;
+            }
+        }
+
         ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
         set_board_status_single(board_status->wifi_init, true);
     }
@@ -344,7 +362,7 @@ esp_err_t wifi_set_channel(uint8_t channel)
         return ESP_ERR_INVALID_STATE;
     }
 
-    esp_err_t err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_BELOW);
+    esp_err_t err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
     if(err == ESP_OK) {
         set_board_status {
             status->wifi_config_ap.channel = channel;
@@ -393,15 +411,13 @@ esp_err_t wifi_scan(scan_config_t *scan_config)
         set_board_status {
             status->wifi_scan_started = true;
             status->wifi_scan_done = false;
-            status->wifi_scan_ap_num = 0;
             status->wifi_scan_error = 0;
         }
-        log_message(LOG_LEVEL_INFO, TAG, "Wifi Scan Started.");
+        log_message(LOG_LEVEL_DEBUG, TAG, "Wifi Scan Started.");
     } else {
         set_board_status {
             status->wifi_scan_started = false;
             status->wifi_scan_done = false;
-            status->wifi_scan_ap_num = 0;
             status->wifi_scan_error = 1;
         }
         log_message(LOG_LEVEL_ERROR, TAG, "Failed to start WiFi scan: %s", esp_err_to_name(err));

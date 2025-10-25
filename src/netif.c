@@ -17,7 +17,7 @@ esp_err_t network_interface_init(void)
         }
     }
     
-    board_status->netif_status = true;
+    set_board_status_single(board_status->netif_status, true);
     log_message(LOG_LEVEL_INFO, TAG, "Network interface initialized.");
     return err;
 }
