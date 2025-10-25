@@ -12,6 +12,7 @@
 #include "board.h"
 
 typedef enum {
+    CMD_NOP = 0x00,
     /* MASTER to SLAVE*/
     CMD_BOARD_STATUS = 0x01,
     CMD_WIFI_CONFIG,
@@ -27,7 +28,7 @@ typedef enum {
 } proto_cmd_t;
 
 #define PROTO_MAX_PAYLOAD   (2048-sizeof(proto_header_t))
-#define FRAME_QUEUE_SIZE    10
+#define FRAME_QUEUE_SIZE    20
 
 /**
  * @brief base frame header structures
@@ -129,6 +130,5 @@ void proto_master_task(void *arg);
  * @brief Master protocol polling task
  */
 void proto_master_polling_task(void *arg);
-
 
 #endif // SPI_PROTO_H

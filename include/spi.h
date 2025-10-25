@@ -22,11 +22,7 @@ typedef enum {
     /**
      * @brief Slave 3 address (ESP32S3)
      */
-    ESP32S3,
-    /**
-     * @brief Broadcast address
-     */
-    BROADCAST_ADDR
+    ESP32S3
 } slave_addr_t;
 
 esp_err_t spi_init(void);

@@ -27,6 +27,9 @@ void handle_frame_master(proto_frame_t *frame)
                 memcpy(&slave->wifi_config_sta, &wifi_config_pkt->fields.wifi_config_sta, sizeof(sta_config_t));
                 log_message(LOG_LEVEL_DEBUG, TAG, "Wifi Started on slave %d", frame->header.addr);
             }
+            else {
+                log_message(LOG_LEVEL_DEBUG, TAG, "Failed to set Wifi on slave %d, err=%d(%s)", frame->header.addr, wifi_config_pkt->fields.status, esp_err_to_name(wifi_config_pkt->fields.status));
+            }
             break;
         }
         case CMD_WIFI_CHANNEL_RESPONSE: {
@@ -107,6 +110,9 @@ proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
             wifi_scan_frame->fields.status = err;
             memcpy(&response, wifi_scan_frame, sizeof(proto_wifi_scan_t));
             return &response;
+        }
+        case CMD_NOP: {
+            return NULL;
         }
         default: {
             log_message(LOG_LEVEL_DEBUG, TAG, "Unknown/Unexpected cmd=%d addr=%d (len=%d)", frame->header.cmd, frame->header.addr, frame->header.len);
@@ -203,10 +209,10 @@ esp_err_t CommandWifiScan(int addr, scan_config_t *scan_config)
     proto_wifi_scan_t wifi_scan_pkt = { 0 };
 
     wifi_scan_pkt.header.cmd = CMD_WIFI_SCAN;
-    wifi_scan_pkt.header.len = sizeof(wifi_scan_pkt.fields);
     if(scan_config != NULL)
     {
         memcpy(&wifi_scan_pkt.fields.scan_config, scan_config, sizeof(scan_config_t));
+        wifi_scan_pkt.header.len = sizeof(wifi_scan_pkt.fields);
     }
 
     err = proto_send_frame(addr, &wifi_scan_pkt);
