@@ -1,6 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 
+#define LOG_QUEUE_LENGTH 10
 
 typedef enum {
     LOG_LEVEL_NONE = 0,
@@ -10,6 +11,15 @@ typedef enum {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_VERBOSE
 } log_level_t;
+
+typedef struct {
+    char message[128];
+} log_message_t;
+
+/**
+ * @brief Initialize the logging system with a specific log level.
+ */
+esp_err_t log_init(log_level_t level);
 
 /**
  * @brief Set the current logging level.

@@ -41,7 +41,6 @@ typedef struct __attribute((packed)) {
     /* Scan */
     uint8_t wifi_scan_started;
     uint8_t wifi_scan_done;
-    uint8_t wifi_scan_ap_num;
     uint8_t wifi_scan_error;
 
     uint8_t wifi_sta_started;
