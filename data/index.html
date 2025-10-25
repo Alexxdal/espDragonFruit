@@ -1,23 +1,288 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>espDragonfruit</title>
-        <link rel="stylesheet" href="css/styles.css">
-    </head>
-    <body>
-        <!-- SCRIPTS -->
-        <script type="module" src="js/index.js" defer></script>
-        <!-- ROOT CONTAINER -->
-        <div class="root-ctn">
-            <div class="title-row">Dragonfruit v0.0.0</div>
-            <div class="root-sub-ctn">
-                <!-- LEFT BAR -->
-                <div class="left-bar">
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>espDragonFruit - Control Panel</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>🐉 espDragonFruit</h1>
+                <p class="subtitle">Multi-Radio Pentest Platform</p>
+            </div>
+            <div class="connection-status">
+                <span class="status-indicator" id="connectionStatus"></span>
+                <span id="lastUpdate">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <div class="board-card master-card" id="masterCard">
+                <div class="card-header">
+                    <h2>Master Board</h2>
+                    <span class="chip-model" id="masterModel">ESP32-S3</span>
                 </div>
-                <!-- MAIN CONTAINER -->
-                <div class="main-ctn">
+                <div class="card-body">
+                    <div class="info-section">
+                        <h3>Chip Info</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">Model:</span>
+                                <span id="masterChipModel">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Cores:</span>
+                                <span id="masterCores">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Revision:</span>
+                                <span id="masterRevision">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Features:</span>
+                                <span id="masterFeatures">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Memory</h3>
+                        <div class="memory-bar">
+                            <div class="memory-label">
+                                <span>Internal RAM</span>
+                                <span id="masterRamText">0 / 0 KB</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="masterRamBar"></div>
+                            </div>
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">Free:</span>
+                                <span id="masterRamFree">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Largest Block:</span>
+                                <span id="masterRamLargest">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">SPIRAM:</span>
+                                <span id="masterSpiram">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Modules Status</h3>
+                        <div class="module-status">
+                            <span class="module-badge" id="masterSpi">SPI</span>
+                            <span class="module-badge" id="masterNetif">NetIF</span>
+                            <span class="module-badge" id="masterWifiInit">WiFi Init</span>
+                            <span class="module-badge" id="masterWifiStarted">WiFi Started</span>
+                            <span class="module-badge" id="masterBluetooth">Bluetooth</span>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>WiFi Configuration</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">AP SSID:</span>
+                                <span id="masterApSsid">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Channel:</span>
+                                <span id="masterChannel">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Mode:</span>
+                                <span id="masterMode">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="board-card slave-card" id="slave1Card">
+                <div class="card-header">
+                    <h2>Slave 1</h2>
+                    <span class="chip-model" id="slave1Model">ESP-WROOM-32</span>
+                </div>
+                <div class="card-body">
+                    <div class="info-section">
+                        <h3>Chip Info</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">Model:</span>
+                                <span id="slave1ChipModel">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Cores:</span>
+                                <span id="slave1Cores">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Memory</h3>
+                        <div class="memory-bar">
+                            <div class="memory-label">
+                                <span>Internal RAM</span>
+                                <span id="slave1RamText">0 / 0 KB</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="slave1RamBar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Modules Status</h3>
+                        <div class="module-status">
+                            <span class="module-badge" id="slave1Spi">SPI</span>
+                            <span class="module-badge" id="slave1WifiStarted">WiFi</span>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>WiFi Configuration</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">SSID:</span>
+                                <span id="slave1Ssid">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Mode:</span>
+                                <span id="slave1Mode">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="board-card slave-card" id="slave2Card">
+                <div class="card-header">
+                    <h2>Slave 2</h2>
+                    <span class="chip-model" id="slave2Model">ESP32-C5</span>
+                </div>
+                <div class="card-body">
+                    <div class="info-section">
+                        <h3>Chip Info</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">Model:</span>
+                                <span id="slave2ChipModel">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Cores:</span>
+                                <span id="slave2Cores">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Memory</h3>
+                        <div class="memory-bar">
+                            <div class="memory-label">
+                                <span>Internal RAM</span>
+                                <span id="slave2RamText">0 / 0 KB</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="slave2RamBar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Modules Status</h3>
+                        <div class="module-status">
+                            <span class="module-badge" id="slave2Spi">SPI</span>
+                            <span class="module-badge" id="slave2WifiStarted">WiFi</span>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>WiFi Configuration</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">SSID:</span>
+                                <span id="slave2Ssid">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Mode:</span>
+                                <span id="slave2Mode">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="board-card slave-card" id="slave3Card">
+                <div class="card-header">
+                    <h2>Slave 3</h2>
+                    <span class="chip-model" id="slave3Model">ESP32-S3</span>
+                </div>
+                <div class="card-body">
+                    <div class="info-section">
+                        <h3>Chip Info</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">Model:</span>
+                                <span id="slave3ChipModel">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Cores:</span>
+                                <span id="slave3Cores">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Memory</h3>
+                        <div class="memory-bar">
+                            <div class="memory-label">
+                                <span>Internal RAM</span>
+                                <span id="slave3RamText">0 / 0 KB</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="slave3RamBar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>Modules Status</h3>
+                        <div class="module-status">
+                            <span class="module-badge" id="slave3Spi">SPI</span>
+                            <span class="module-badge" id="slave3WifiStarted">WiFi</span>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3>WiFi Configuration</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">SSID:</span>
+                                <span id="slave3Ssid">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Mode:</span>
+                                <span id="slave3Mode">-</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </body>
+
+        <footer>
+            <p>espDragonFruit v0.0.1 - Authorized Security Testing Only</p>
+        </footer>
+    </div>
+
+    <script src="js/index.js"></script>
+</body>
 </html>
