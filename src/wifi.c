@@ -11,7 +11,12 @@ static const char *TAG = "WIFI";
 static esp_netif_t *netif_ap = NULL;
 static esp_netif_t *netif_sta = NULL;
 static TaskHandle_t s_wifi_worker = NULL;
+
+#if defined(HAS_PSRAM)
+EXT_RAM_BSS_ATTR static scan_results_t results;
+#else
 static scan_results_t results = { 0 };
+#endif
 
 static void wifi_worker_task(void *arg) 
 {

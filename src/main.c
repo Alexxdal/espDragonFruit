@@ -52,12 +52,8 @@ void app_main()
         .show_hidden = 1,
         .scan_type = WIFI_SCAN_TYPE_ACTIVE,
         .scan_time = 120,
-        .ghz_2_channel_bitmap = 0xFFFF,
-        .ghz_5_channel_bitmap = 0xFFFFFFFF
     };
-    
     vTaskDelay(pdMS_TO_TICKS(2000)); // Wait for wifi to be ready
-
     CommandWifiScan(ESP32C5, &scan_config);
     CommandWifiScan(ESP32S3, &scan_config);
     CommandWifiScan(ESPWROOM32, &scan_config);

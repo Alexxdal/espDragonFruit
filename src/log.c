@@ -23,7 +23,11 @@ esp_err_t log_init(log_level_t level) {
         printf("Failed to create log queue\n");
         return ESP_ERR_NO_MEM;
     }
+    #if defined(HAS_PSRAM)
+    xTaskCreateWithCaps(log_task, "log_task", 2048, NULL, tskIDLE_PRIORITY + 1, NULL, MALLOC_CAP_SPIRAM);
+    #else
     xTaskCreate(log_task, "log_task", 2048, NULL, tskIDLE_PRIORITY + 1, NULL);
+    #endif
     return ESP_OK;
 }
 

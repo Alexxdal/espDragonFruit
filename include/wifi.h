@@ -4,7 +4,11 @@
 #include "esp_err.h"
 #include "esp_wifi.h"
 
-#define WIFI_SCAN_MAX_AP 20
+#if defined(HAS_PSRAM)
+#define WIFI_SCAN_MAX_AP 25
+#else
+#define WIFI_SCAN_MAX_AP 15
+#endif
 
 /**
  * @brief Access Point configuration structure
