@@ -359,21 +359,15 @@ esp_err_t wifi_set_channel(uint8_t channel)
     if(channel > 14 || channel == 0)
         return ESP_ERR_INVALID_ARG;
     
-    if(status->wifi_init == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant change channel, WiFi not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
-    if(status->wifi_started == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant change channel, WiFi not started");
-        return ESP_ERR_INVALID_STATE;
-    }
-
     esp_err_t err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
     if(err == ESP_OK) {
         set_board_status {
             status->wifi_config_ap.channel = channel;
             status->wifi_config_sta.channel = channel;
         }
+    } 
+    else {
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to set wifi channel (%s).", esp_err_to_name(err));
     }
     return err;
 }
@@ -383,22 +377,6 @@ esp_err_t wifi_scan(scan_config_t *scan_config)
     board_status_t *status = getBoardStatus();
     esp_err_t err = ESP_OK;
 
-    if(status->wifi_init == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant Scan, WiFi not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
-    if(status->wifi_started == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant scan, WiFi not started");
-        return ESP_ERR_INVALID_STATE;
-    }
-    if(status->wifi_sta_started == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant scan, WiFi STA not started (need STA or APSTA mode)");
-        return ESP_ERR_INVALID_STATE;
-    }
-    if(status->wifi_scan_started == true) {
-        log_message(LOG_LEVEL_WARN, TAG, "WiFi scan already in progress");
-        return ESP_ERR_INVALID_STATE;
-    }
     /* If scan_config is NULL default value will be used */
     wifi_scan_config_t esp_scan_config = { 0 };
     if(scan_config != NULL) {
@@ -434,25 +412,9 @@ esp_err_t wifi_scan(scan_config_t *scan_config)
 esp_err_t wifi_scan_get_results(scan_results_t *out_results)
 {
     board_status_t *status = getBoardStatus();
-    if(status->wifi_init == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant get scan results, WiFi not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
-    if(status->wifi_started == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant get scan results, WiFi not started");
-        return ESP_ERR_INVALID_STATE;
-    }
-    if(status->wifi_sta_started == false) {
-        log_message(LOG_LEVEL_ERROR, TAG, "Cant get scan results, WiFi STA not started");
-        return ESP_ERR_INVALID_STATE;
-    }
     if(status->wifi_scan_done == false) {
         log_message(LOG_LEVEL_ERROR, TAG, "Cant get scan results, WiFi scan not done");
         return ESP_ERR_INVALID_STATE;
-    }
-    if(status->wifi_scan_error == 1) {
-        log_message(LOG_LEVEL_WARN, TAG, "WiFi scan ended with error");
-        return ESP_ERR_NOT_FOUND;
     }
 
     uint16_t ap_num = 0;
