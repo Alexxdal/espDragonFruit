@@ -86,8 +86,9 @@ static esp_err_t master_init()
         .pmf_required = false,
         .pmf_capable = false
     };
+    sta_config_t wifi_config_sta = { 0 };
 
-    err = wifi_set_config(&wifi_config_ap, NULL, WIFI_MODE_AP);
+    err = wifi_set_config(&wifi_config_ap, &wifi_config_sta, WIFI_MODE_APSTA);
     ESP_RETURN_ON_ERROR(err, TAG, "wifi_set_config");
 
     err = httpd_server_start();
