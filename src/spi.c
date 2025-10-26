@@ -6,13 +6,19 @@
 
 #if defined(BOARD_MASTER)
 static const gpio_num_t slave_cs[] = { SPI_S1_CS, SPI_S2_CS, SPI_S3_CS };
-static spi_device_handle_t slave[3];
+static spi_device_handle_t slave[SLAVE_NUM];
 static spi_transaction_t transaction;
 #else
 static spi_slave_transaction_t transaction;
 #endif
 
 static const char *TAG = "SPI";
+
+static const char* SLAVE_ADD_TO_MANE[SLAVE_NUM] = {
+    "ESP-WROOM-32",
+    "ESP32C5",
+    "ESP32S3"
+};
 
 esp_err_t spi_init(void)
 {
@@ -27,7 +33,7 @@ esp_err_t spi_init(void)
     };
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_HOST_TARGET, &bus, SPI_DMA_CH_AUTO));
 
-    for(uint8_t i = 0; i < 3; i++)
+    for(uint8_t i = 0; i < SLAVE_NUM; i++)
     {
         spi_device_interface_config_t device = {
             .mode = 1,

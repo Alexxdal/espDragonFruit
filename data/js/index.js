@@ -5,19 +5,24 @@ const CHIP_MODELS = {
     1: 'ESP32',
     2: 'ESP32-S2',
     5: 'ESP32-C3',
-    6: 'ESP32-S3',
-    9: 'ESP32-C2',
-    12: 'ESP32-C5',
+    9: 'ESP32-S3',
+    12: 'ESP32-C2',
     13: 'ESP32-C6',
     16: 'ESP32-H2',
-    17: 'ESP32-P4'
+    18: 'ESP32-P4',
+    20: 'ESP32-C61',
+    23: 'ESP32-C5',
+    25: 'ESP32-H21',
+    28: 'ESP32-H4',
+    999: 'POSIX/Linux'
 };
 
 const WIFI_MODES = {
     0: 'NULL',
     1: 'STA',
     2: 'AP',
-    3: 'APSTA'
+    3: 'APSTA',
+    4: 'NAN'
 };
 
 function formatBytes(bytes) {
@@ -29,13 +34,14 @@ function formatBytes(bytes) {
 }
 
 function formatFeatures(features) {
-    const flags = [];
-    if (features & 0x01) flags.push('WiFi');
-    if (features & 0x02) flags.push('BLE');
-    if (features & 0x04) flags.push('BT');
-    if (features & 0x08) flags.push('EMB_FLASH');
-    if (features & 0x10) flags.push('EMB_PSRAM');
-    return flags.join(', ') || 'None';
+  const flags = [];
+  if (features & 0x01) flags.push('EMB_FLASH');      // BIT(0)
+  if (features & 0x02) flags.push('WiFi');           // BIT(1)
+  if (features & 0x10) flags.push('BLE');            // BIT(4)
+  if (features & 0x20) flags.push('BT Classic');     // BIT(5)
+  if (features & 0x40) flags.push('IEEE 802.15.4');  // BIT(6)
+  if (features & 0x80) flags.push('EMB_PSRAM');      // BIT(7)
+  return flags.length ? flags.join(', ') : 'None';
 }
 
 function updateBoardUI(prefix, data) {
@@ -102,8 +108,7 @@ function updateBoardUI(prefix, data) {
     if (data.modules) {
         updateModuleBadge(`${prefix}Spi`, data.modules.spi);
         updateModuleBadge(`${prefix}Netif`, data.modules.netif);
-        updateModuleBadge(`${prefix}WifiInit`, data.modules.wifi_init);
-        updateModuleBadge(`${prefix}WifiStarted`, data.modules.wifi_started);
+        updateModuleBadge(`${prefix}Wifi`, data.modules.wifi_init);
         updateModuleBadge(`${prefix}Bluetooth`, data.modules.bluetooth);
     }
 

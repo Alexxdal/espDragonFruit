@@ -14,7 +14,7 @@ typedef enum {
     /**
      * @brief Slave 1 address (ESP-WROOM-32)
      */
-    ESPWROOM32 = 1,
+    ESPWROOM32 = 0,
     /**
      * @brief Slave 2 address (ESP32C5)
      */
@@ -22,7 +22,8 @@ typedef enum {
     /**
      * @brief Slave 3 address (ESP32S3)
      */
-    ESP32S3
+    ESP32S3,
+    SLAVE_NUM
 } slave_addr_t;
 
 esp_err_t spi_init(void);

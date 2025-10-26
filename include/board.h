@@ -61,12 +61,6 @@ esp_err_t board_init();
 board_status_t *getBoardStatus(void);
 
 /**
- * @brief Get the status of a slave board (master only)
- * @param addr Slave address (1-based index)
- */
-board_status_t *getSlaveStatus(int addr);
-
-/**
  * @brief Lock board status mutex
  */
 void board_status_lock(void);
@@ -75,5 +69,37 @@ void board_status_lock(void);
  * @brief Unlock board status mutex
  */
 void board_status_unlock(void);
+
+/**
+ * @brief Get the current board wifi scan result
+ */
+scan_results_t *getCurrentBoardWifiScanResults(void);
+
+/**
+ * @brief Set the current board wifi scan result
+ * @param results Pointer to scan results to set
+ */
+esp_err_t setCurrentBoardWifiScanResults(scan_results_t *results);
+
+#if defined(BOARD_MASTER)
+/**
+ * @brief Get the status of a slave board (master only)
+ * @param addr Slave address
+ */
+board_status_t *getSlaveStatus(int addr);
+
+/**
+ * @brief Get the wifi scan results of a slave board (master only)
+ * @param addr Slave address
+ */
+scan_results_t *getSlaveWifiScanResults(int addr);
+
+/**
+ * @brief Set the wifi scan results of a slave board (master only)
+ * @param addr Slave address
+ * @param results Pointer to scan results to set
+ */
+esp_err_t setSlaveWifiScanResults(int addr, scan_results_t *results);
+#endif
 
 #endif // BOARD_H

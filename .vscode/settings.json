@@ -29,6 +29,7 @@
         "esp_log.h": "c",
         "commandmng.h": "c",
         "compare": "c",
-        "numbers": "c"
+        "numbers": "c",
+        "random": "c"
     }
 }

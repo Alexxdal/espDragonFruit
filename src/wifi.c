@@ -12,33 +12,34 @@ static esp_netif_t *netif_ap = NULL;
 static esp_netif_t *netif_sta = NULL;
 static TaskHandle_t s_wifi_worker = NULL;
 
-#if defined(HAS_PSRAM)
-EXT_RAM_BSS_ATTR static scan_results_t results;
-#else
-static scan_results_t results = { 0 };
-#endif
-
 static void wifi_worker_task(void *arg) 
 {
     (void)arg;
     board_status_t *board_status = getBoardStatus();
     while(1)
     {
-        uint32_t scan_result = 0;
-        xTaskNotifyWait(0, 0xFFFFFFFF, &scan_result, portMAX_DELAY);
+        uint32_t scan_result_error = 0;
+        xTaskNotifyWait(0, 0xFFFFFFFF, &scan_result_error, portMAX_DELAY);
 
-        if(scan_result == 0) {
+        if(scan_result_error == 0) {
             set_board_status {
                 board_status->wifi_scan_started = false;
                 board_status->wifi_scan_done = true;
                 board_status->wifi_scan_error = 0;
             };
-            if (wifi_scan_get_results(&results) == ESP_OK) {
+            scan_results_t *results = getCurrentBoardWifiScanResults();
+            if (wifi_scan_get_results(results) == ESP_OK) {
                 #if defined(BOARD_MASTER)
-                //TODO: Master handle scan results
+                log_message(LOG_LEVEL_DEBUG, TAG, "Wifi Scan Results, APs found: %d", results->ap_num);
                 #else
-                CommandWifiScanResults(SLAVE_ADDR, &results);
+                CommandWifiScanResults(SLAVE_ADDR, results);
                 #endif
+            }
+            else
+            {
+                set_board_status {
+                    board_status->wifi_scan_error = 1;
+                };
             }
         }
         else {
@@ -509,3 +510,4 @@ esp_err_t wifi_scan_get_results(scan_results_t *out_results)
 
     return err;
 }
+

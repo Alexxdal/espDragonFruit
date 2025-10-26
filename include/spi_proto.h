@@ -14,13 +14,15 @@
 typedef enum {
     CMD_NOP = 0x00,
     /* MASTER to SLAVE*/
-    CMD_BOARD_STATUS = 0x01,
+    CMD_BOARD_STATUS,
+    CMD_BOARD_INFO,
     CMD_WIFI_CONFIG,
     CMD_WIFI_CHANNEL,
     CMD_WIFI_SCAN,
 
     /* SLAVE to MASTER */
     CMD_BOARD_STATUS_RESPONSE,
+    CMD_BOARD_INFO_RESPONSE,
     CMD_WIFI_CONFIG_RESPONSE,
     CMD_WIFI_CHANNEL_RESPONSE,
     CMD_WIFI_SCAN_RESPONSE,
@@ -57,6 +59,21 @@ typedef struct __attribute((packed)) {
         board_status_t status;
     } fields;
 } proto_board_status_t;
+
+/**
+ * @brief Command to get Slave board info
+ */
+typedef struct __attribute__((packed)) {
+    proto_header_t header;
+    struct __attribute__((packed)) {
+        uint8_t  chip_cores;
+        uint8_t  chip_model;
+        uint16_t  chip_revision;
+        uint32_t chip_features;
+        uint32_t total_internal_memory;
+        uint32_t spiram_size;
+    } fields;
+} proto_board_info_t;
 
 /**
  * @brief Command to set Slave wifi

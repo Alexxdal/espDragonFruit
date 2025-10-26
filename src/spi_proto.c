@@ -95,6 +95,7 @@ esp_err_t proto_send_frame(int slave_addr, void *frame)
 }
 
 #if defined(BOARD_MASTER)
+/* This section is critical to mantain async communication with the slave */
 void proto_master_polling_task(void *arg)
 {
     (void)arg;
@@ -107,13 +108,14 @@ void proto_master_polling_task(void *arg)
     {
         if( uxQueueMessagesWaiting(tx_frame_queue) == 0)
         {
-            proto_send_frame(ESPWROOM32, &poll_frame);
-            proto_send_frame(ESP32C5, &poll_frame);
-            proto_send_frame(ESP32S3, &poll_frame);
+            for(uint8_t addr = 0; addr < SLAVE_NUM; addr++) {
+                proto_send_frame(addr, &poll_frame);
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(150));
     }
 }
+/***************************************************************************/
 
 void proto_master_task(void *arg)
 {
@@ -126,8 +128,7 @@ void proto_master_task(void *arg)
             int dst = tx_frame.header.addr;
             if (dst >= ESPWROOM32 && dst <= ESP32S3) 
             {
-                int idx = dst - 1;
-                if (spi_submit(idx, (uint8_t *)&tx_frame, (uint8_t *)&rx_frame, 0) == ESP_OK) {
+                if (spi_submit(dst, (uint8_t *)&tx_frame, (uint8_t *)&rx_frame, 0) == ESP_OK) {
                     frame_sent++;
                     if (rx_frame.header.cmd != 0xffff && rx_frame.header.cmd != 0x0 && rx_frame.header.len <= PROTO_MAX_PAYLOAD) {
                         uint8_t crc = crc8_atm(((const uint8_t *)&rx_frame) + 1, (sizeof(proto_header_t) - 1) + rx_frame.header.len);

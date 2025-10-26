@@ -57,6 +57,7 @@ void app_main()
     CommandWifiScan(ESP32C5, &scan_config);
     CommandWifiScan(ESP32S3, &scan_config);
     CommandWifiScan(ESPWROOM32, &scan_config);
+    wifi_scan(NULL);
     #endif
 
     while (1)

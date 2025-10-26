@@ -18,6 +18,17 @@ void handle_frame_master(proto_frame_t *frame)
             memcpy(slave, &board_status_pkt->fields.status, sizeof(board_status_t));
             break;
         }
+        case CMD_BOARD_INFO_RESPONSE: {
+            proto_board_info_t *board_info_pkt = (proto_board_info_t *)frame;
+            board_status_t *slave = getSlaveStatus(frame->header.addr);
+            slave->chip_cores = board_info_pkt->fields.chip_cores;
+            slave->chip_model = board_info_pkt->fields.chip_model;
+            slave->chip_revision = board_info_pkt->fields.chip_revision;
+            slave->chip_features = board_info_pkt->fields.chip_features;
+            slave->total_internal_memory = board_info_pkt->fields.total_internal_memory;
+            slave->spiram_size = board_info_pkt->fields.spiram_size;
+            break;
+        }
         case CMD_WIFI_CONFIG_RESPONSE: {
             proto_wifi_config_t *wifi_config_pkt = (proto_wifi_config_t *)frame;
             board_status_t *slave = getSlaveStatus(frame->header.addr);
@@ -44,7 +55,6 @@ void handle_frame_master(proto_frame_t *frame)
         }
         case CMD_WIFI_SCAN_RESPONSE: {
             proto_wifi_scan_t *wifi_scan_resp = (proto_wifi_scan_t *)frame;
-            board_status_t *slave = getSlaveStatus(frame->header.addr);
             if(wifi_scan_resp->fields.status == ESP_OK)
             {
                 log_message(LOG_LEVEL_DEBUG, TAG, "Wifi Scan Started on slave %d", frame->header.addr);
@@ -53,10 +63,17 @@ void handle_frame_master(proto_frame_t *frame)
         }
         case CMD_WIFI_SCAN_RESULTS_RESPONSE: {
             proto_wifi_scan_results_t *wifi_scan_results_resp = (proto_wifi_scan_results_t *)frame;
-            board_status_t *slave = getSlaveStatus(frame->header.addr);
             if(wifi_scan_results_resp->fields.status == ESP_OK)
             {
-                log_message(LOG_LEVEL_DEBUG, TAG, "Wifi Scan Results received from slave %d, APs found: %d", frame->header.addr, wifi_scan_results_resp->fields.scan_results.ap_num);
+                esp_err_t err = setSlaveWifiScanResults(frame->header.addr, &wifi_scan_results_resp->fields.scan_results);
+                if(err != ESP_OK)
+                {
+                    log_message(LOG_LEVEL_DEBUG, TAG, "Failed to set Wifi Scan Results from slave %d, err=%d(%s)", frame->header.addr, err, esp_err_to_name(err));
+                    break;
+                }
+                else {
+                    log_message(LOG_LEVEL_DEBUG, TAG, "Wifi Scan Results received from slave %d, APs found: %d", frame->header.addr, wifi_scan_results_resp->fields.scan_results.ap_num);
+                }
             }
             break;
         }
@@ -82,6 +99,20 @@ proto_frame_t *handle_frame_slave(const proto_frame_t *frame)
             board_status_pkt->header.len = sizeof(board_status_pkt->fields);
             board_status_pkt->fields.status = *board_status;
             memcpy(&response, board_status_pkt, sizeof(proto_board_status_t));
+            return &response;
+        }
+        case CMD_BOARD_INFO: {
+            proto_board_info_t *board_info_pkt = (proto_board_info_t *)&response;
+            board_status_t *board_status = getBoardStatus();
+            board_info_pkt->header.cmd = CMD_BOARD_INFO_RESPONSE;
+            board_info_pkt->header.len = sizeof(board_info_pkt->fields);
+            board_info_pkt->fields.chip_cores = board_status->chip_cores;
+            board_info_pkt->fields.chip_model = board_status->chip_model;
+            board_info_pkt->fields.chip_revision = board_status->chip_revision;
+            board_info_pkt->fields.chip_features = board_status->chip_features;
+            board_info_pkt->fields.total_internal_memory = board_status->total_internal_memory;
+            board_info_pkt->fields.spiram_size = board_status->spiram_size;
+            memcpy(&response, board_info_pkt, sizeof(proto_board_info_t));
             return &response;
         }
         case CMD_WIFI_CONFIG: {
