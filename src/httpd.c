@@ -2,6 +2,7 @@
 #include "esp_http_server.h"
 #include "httpd.h"
 #include "board.h"
+#include "spi_proto.h"
 #include "log.h"
 #include "cJSON.h"
 
@@ -63,16 +64,18 @@ static void add_board_status_json(cJSON *parent, const char *name, const board_s
 
 static esp_err_t status_get_handler(httpd_req_t *req)
 {
-    board_status_t *master = getBoardStatus();
-    board_status_t *slave1 = getSlaveStatus(1);
-    board_status_t *slave2 = getSlaveStatus(2);
-    board_status_t *slave3 = getSlaveStatus(3);
     cJSON *root = cJSON_CreateObject();
-    
+
+    #if defined(BOARD_MASTER)
+    board_status_t *master = getBoardStatus();
+    board_status_t *slave1 = getSlaveStatus(ESPWROOM32);
+    board_status_t *slave2 = getSlaveStatus(ESP32C5);
+    board_status_t *slave3 = getSlaveStatus(ESP32S3);
     add_board_status_json(root, "master", master);
     add_board_status_json(root, "slave1", slave1);
     add_board_status_json(root, "slave2", slave2);
     add_board_status_json(root, "slave3", slave3);
+    #endif
 
     // Serializza (senza spazi)
     char *json = cJSON_PrintUnformatted(root);

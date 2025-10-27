@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <nvs_flash.h>
 #include <esp_log.h>
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -14,7 +15,18 @@ static const char *TAG = "MAIN";
 
 void app_main() 
 {
-    esp_log_level_set("*", ESP_LOG_WARN);
+    esp_log_level_set("*", ESP_LOG_ERROR);
+
+    #if defined(BOARD_MASTER)
+    /* Set Slave CS to 1 */
+    gpio_set_direction(SPI_S1_CS, GPIO_MODE_OUTPUT);
+    gpio_set_direction(SPI_S2_CS, GPIO_MODE_OUTPUT);
+    gpio_set_direction(SPI_S3_CS, GPIO_MODE_OUTPUT);
+    gpio_set_level(SPI_S1_CS, 1);
+    gpio_set_level(SPI_S2_CS, 1);
+    gpio_set_level(SPI_S3_CS, 1);
+    #endif
+
     esp_err_t err = ESP_OK;
     err = board_init();
 
@@ -24,39 +36,32 @@ void app_main()
         return;
     }
 
-    /* Test start AP on slaves */
     #if defined(BOARD_MASTER)
-    static sta_config_t sta_no_pmf = {
-        .ssid = "TestSSID",
-        .password = "TestPassword",
-        .scan_method = WIFI_FAST_SCAN,
-        .bssid_set = 0,
-        .channel = 0,
-        .listen_interval = 0,
-        .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
-        .pmf_capable = true,
-        .pmf_required = false
+    sta_config_t sta_config = {
+        .ssid = "",
+        .password = "",
+        .pmf_capable = 1,
+        .pmf_required = 0,
+        .scan_method = WIFI_FAST_SCAN
     };
-
-    static sta_config_t sta_yes_pmf = {
-        .ssid = "TestSSID",
-        .password = "TestPassword",
-        .scan_method = WIFI_ALL_CHANNEL_SCAN,
-        .bssid_set = 0,
+    CommandSetWifiConfig(ESPWROOM32, NULL, &sta_config, WIFI_MODE_STA);
+    CommandSetWifiConfig(ESP32S3, NULL, &sta_config, WIFI_MODE_STA);
+    CommandSetWifiConfig(ESP32C5, NULL, &sta_config, WIFI_MODE_STA);
+    scan_config_t scan_config = {
         .channel = 0,
-        .listen_interval = 0,
-        .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
-        .pmf_capable = true,
-        .pmf_required = true
+        .show_hidden = 1,
+        .scan_type = WIFI_SCAN_TYPE_ACTIVE,
+        .scan_time = 120,
     };
-    
-    CommandSetWifiConfig(ESPWROOM32, NULL, &sta_no_pmf, WIFI_MODE_STA);
-    CommandSetWifiConfig(ESP32C5, NULL, &sta_yes_pmf, WIFI_MODE_STA);
-    CommandSetWifiConfig(ESP32S3, NULL, &sta_yes_pmf, WIFI_MODE_STA);
+    vTaskDelay(pdMS_TO_TICKS(2000)); // Wait for wifi to be ready
+    CommandWifiScan(ESP32C5, &scan_config);
+    CommandWifiScan(ESP32S3, &scan_config);
+    CommandWifiScan(ESPWROOM32, &scan_config);
+    wifi_scan(NULL);
     #endif
 
-    while (1) 
+    while (1)
     {
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

@@ -28,6 +28,8 @@
         "esp_chip_info.h": "c",
         "esp_log.h": "c",
         "commandmng.h": "c",
-        "compare": "c"
+        "compare": "c",
+        "numbers": "c",
+        "random": "c"
     }
 }

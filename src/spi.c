@@ -6,13 +6,19 @@
 
 #if defined(BOARD_MASTER)
 static const gpio_num_t slave_cs[] = { SPI_S1_CS, SPI_S2_CS, SPI_S3_CS };
-static spi_device_handle_t slave[3];
+static spi_device_handle_t slave[SLAVE_NUM];
 static spi_transaction_t transaction;
 #else
 static spi_slave_transaction_t transaction;
 #endif
 
 static const char *TAG = "SPI";
+
+static const char* SLAVE_ADD_TO_MANE[SLAVE_NUM] = {
+    "ESP-WROOM-32",
+    "ESP32C5",
+    "ESP32S3"
+};
 
 esp_err_t spi_init(void)
 {
@@ -22,22 +28,23 @@ esp_err_t spi_init(void)
         .miso_io_num = SPI_MISO,
         .sclk_io_num = SPI_SCLK,
         .data_io_default_level = 0,
-        .max_transfer_sz = 4096,
+        .max_transfer_sz = 8192,
         .flags = SPICOMMON_BUSFLAG_MASTER,
     };
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_HOST_TARGET, &bus, SPI_DMA_CH_AUTO));
 
-    for(uint8_t i = 0; i < 3; i++)
+    for(uint8_t i = 0; i < SLAVE_NUM; i++)
     {
         spi_device_interface_config_t device = {
             .mode = 1,
-            .clock_source = SPI_CLK_SRC_DEFAULT,
-            .duty_cycle_pos = 200,
+            .clock_source = SPI_CLK_SRC_XTAL,
+            .duty_cycle_pos = 128,
             .cs_ena_pretrans = 16,
             .cs_ena_posttrans = 16,
-            .clock_speed_hz =  10000000,
+            .clock_speed_hz =  4000000,
             .spics_io_num = slave_cs[i],
-            .queue_size = 16
+            .queue_size = 1,
+            .input_delay_ns = 80
         };
         ESP_ERROR_CHECK(spi_bus_add_device(SPI_HOST_TARGET, &device, &slave[i]));
     }
@@ -50,13 +57,13 @@ esp_err_t spi_init(void)
         .miso_io_num = SPI_MISO,
         .sclk_io_num = SPI_SCLK,
         .data_io_default_level = 0,
-        .max_transfer_sz = 4096,
+        .max_transfer_sz = 8192,
         .flags = SPICOMMON_BUSFLAG_SLAVE,
     };
     static const spi_slave_interface_config_t slv = {
         .spics_io_num = SPI_CS,
         .flags = 0,
-        .queue_size = 16,
+        .queue_size = 1,
         .mode = 1,
         .post_setup_cb = NULL,
         .post_trans_cb = NULL,
@@ -79,11 +86,10 @@ esp_err_t spi_submit(int addr, uint8_t *tx_frame, uint8_t *rx_frame, TickType_t 
     transaction.tx_buffer = tx_frame;
     transaction.length    = (sizeof(proto_frame_t) * 8);
 #if defined(BOARD_MASTER)
-    esp_err_t e = spi_device_transmit(slave[addr], &transaction);
-    return e;
+    transaction.rxlength = transaction.length;
+    return spi_device_transmit(slave[addr], &transaction);
 #else
     (void)addr;
-    esp_err_t e = spi_slave_transmit(SPI_HOST_TARGET, &transaction, ticks);
-    return e;
+    return spi_slave_transmit(SPI_HOST_TARGET, &transaction, ticks);
 #endif
 }

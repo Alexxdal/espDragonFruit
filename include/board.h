@@ -10,15 +10,9 @@
 #define set_board_status for (int _once=(board_status_lock(),0); !_once; _once=(board_status_unlock(),1))
 #define set_board_status_single(field, value) board_status_lock(); field = value; board_status_unlock();
 
-typedef enum {
-    WIFI_IDLE = 0,
-    WIFI_STA_MODE,
-    WIFI_AP_MODE,
-    WIFI_APSTA_MODE,
-    WIFI_CONNECTED,
-    WIFI_DEAUTHING
-} wifi_action_t;
-
+/**
+ * @brief Structure to hold the current board status and settings
+ */
 typedef struct __attribute((packed)) {
     /* Board info */
     uint8_t  chip_cores;
@@ -43,13 +37,16 @@ typedef struct __attribute((packed)) {
     ap_config_t wifi_config_ap;
     sta_config_t wifi_config_sta;
     uint8_t wifi_mode;
-    
     uint8_t wifi_ready;
+    /* Scan */
+    uint8_t wifi_scan_started;
     uint8_t wifi_scan_done;
+    uint8_t wifi_scan_error;
+
     uint8_t wifi_sta_started;
     uint8_t wifi_sta_connected;
     uint8_t wifi_ap_started;
-    uint8_t wifi_ap_has_clients;  
+    uint8_t wifi_ap_has_clients;
 
 } board_status_t;
 
@@ -59,14 +56,9 @@ typedef struct __attribute((packed)) {
 esp_err_t board_init();
 
 /**
- * @brief Get the current board status and settings
+ * @brief Get the current board status
  */
-board_status_t * getBoardStatus(void);
-
-/**
- * @brief Get Slave board status and settings
- */
-board_status_t *getSlaveStatus(int addr);
+board_status_t *getBoardStatus(void);
 
 /**
  * @brief Lock board status mutex
@@ -77,5 +69,37 @@ void board_status_lock(void);
  * @brief Unlock board status mutex
  */
 void board_status_unlock(void);
+
+/**
+ * @brief Get the current board wifi scan result
+ */
+scan_results_t *getCurrentBoardWifiScanResults(void);
+
+/**
+ * @brief Set the current board wifi scan result
+ * @param results Pointer to scan results to set
+ */
+esp_err_t setCurrentBoardWifiScanResults(scan_results_t *results);
+
+#if defined(BOARD_MASTER)
+/**
+ * @brief Get the status of a slave board (master only)
+ * @param addr Slave address
+ */
+board_status_t *getSlaveStatus(int addr);
+
+/**
+ * @brief Get the wifi scan results of a slave board (master only)
+ * @param addr Slave address
+ */
+scan_results_t *getSlaveWifiScanResults(int addr);
+
+/**
+ * @brief Set the wifi scan results of a slave board (master only)
+ * @param addr Slave address
+ * @param results Pointer to scan results to set
+ */
+esp_err_t setSlaveWifiScanResults(int addr, scan_results_t *results);
+#endif
 
 #endif // BOARD_H

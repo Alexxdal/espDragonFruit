@@ -4,11 +4,53 @@
 #include "wifi.h"
 #include "log.h"
 #include "netif.h"
+#include "commandMng.h"
 
 static const char *TAG = "WIFI";
 
 static esp_netif_t *netif_ap = NULL;
 static esp_netif_t *netif_sta = NULL;
+static TaskHandle_t s_wifi_worker = NULL;
+
+static void wifi_worker_task(void *arg) 
+{
+    (void)arg;
+    board_status_t *board_status = getBoardStatus();
+    while(1)
+    {
+        uint32_t scan_result_error = 0;
+        xTaskNotifyWait(0, 0xFFFFFFFF, &scan_result_error, portMAX_DELAY);
+
+        if(scan_result_error == 0) {
+            set_board_status {
+                board_status->wifi_scan_started = false;
+                board_status->wifi_scan_done = true;
+                board_status->wifi_scan_error = 0;
+            };
+            scan_results_t *results = getCurrentBoardWifiScanResults();
+            if (wifi_scan_get_results(results) == ESP_OK) {
+                #if defined(BOARD_MASTER)
+                log_message(LOG_LEVEL_DEBUG, TAG, "Wifi Scan Results, APs found: %d", results->ap_num);
+                #else
+                CommandWifiScanResults(SLAVE_ADDR, results);
+                #endif
+            }
+            else
+            {
+                set_board_status {
+                    board_status->wifi_scan_error = 1;
+                };
+            }
+        }
+        else {
+            set_board_status {
+                board_status->wifi_scan_started = false;
+                board_status->wifi_scan_done = true;
+                board_status->wifi_scan_error = 1;
+            };
+        }
+    }
+}
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -17,9 +59,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     {
         case WIFI_EVENT_SCAN_DONE:
             wifi_event_sta_scan_done_t *e = (wifi_event_sta_scan_done_t *)event_data;
-            (void)e;
-            // e->status == 0 -> OK, altrimenti errore/cancellata
-            // e->number: numero di AP trovati (può essere limitato da cfg.scan_type/threshold)
+            xTaskNotify(s_wifi_worker, e->status, eSetValueWithOverwrite);
             break;
 
         case WIFI_EVENT_STA_START:
@@ -213,6 +253,15 @@ esp_err_t wifi_set_config(ap_config_t *config_ap, sta_config_t *config_sta, uint
             return err;
         }
 
+        /* Start Scan Result Worker */
+        if(s_wifi_worker == NULL) {
+            xTaskCreate(wifi_worker_task, "wifi_worker", 8192, NULL, 5, &s_wifi_worker);
+            if(s_wifi_worker == NULL) {
+                log_message(LOG_LEVEL_ERROR, TAG, "Failed to create WiFi worker task");
+                return ESP_ERR_NO_MEM;
+            }
+        }
+
         ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
         set_board_status_single(board_status->wifi_init, true);
     }
@@ -310,22 +359,117 @@ esp_err_t wifi_set_channel(uint8_t channel)
     if(channel > 14 || channel == 0)
         return ESP_ERR_INVALID_ARG;
     
-    if(!status->wifi_started)
-        return ESP_ERR_INVALID_STATE;
-
-    esp_err_t err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_BELOW);
+    esp_err_t err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
     if(err == ESP_OK) {
         set_board_status {
             status->wifi_config_ap.channel = channel;
             status->wifi_config_sta.channel = channel;
         }
+    } 
+    else {
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to set wifi channel (%s).", esp_err_to_name(err));
     }
     return err;
 }
 
-esp_err_t wifi_scan(wifi_scan_config_t *scan_config)
+esp_err_t wifi_scan(scan_config_t *scan_config)
 {
+    board_status_t *status = getBoardStatus();
+    esp_err_t err = ESP_OK;
+
     /* If scan_config is NULL default value will be used */
-    esp_err_t err = esp_wifi_scan_start(scan_config, false);
+    wifi_scan_config_t esp_scan_config = { 0 };
+    if(scan_config != NULL) {
+        esp_scan_config.channel = scan_config->channel;
+        esp_scan_config.show_hidden = scan_config->show_hidden;
+        esp_scan_config.scan_type = scan_config->scan_type;
+        esp_scan_config.scan_time.active.min = scan_config->scan_time;
+        esp_scan_config.scan_time.active.max = scan_config->scan_time;
+        esp_scan_config.channel_bitmap.ghz_2_channels = scan_config->ghz_2_channel_bitmap;
+        esp_scan_config.channel_bitmap.ghz_5_channels = scan_config->ghz_5_channel_bitmap;
+        err = esp_wifi_scan_start(&esp_scan_config, false);
+    } else {
+        err = esp_wifi_scan_start(NULL, false);
+    }
+    if(err == ESP_OK) {
+        set_board_status {
+            status->wifi_scan_started = true;
+            status->wifi_scan_done = false;
+            status->wifi_scan_error = 0;
+        }
+        log_message(LOG_LEVEL_DEBUG, TAG, "Wifi Scan Started.");
+    } else {
+        set_board_status {
+            status->wifi_scan_started = false;
+            status->wifi_scan_done = false;
+            status->wifi_scan_error = 1;
+        }
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to start WiFi scan: %s", esp_err_to_name(err));
+    }
     return err;
 }
+
+esp_err_t wifi_scan_get_results(scan_results_t *out_results)
+{
+    board_status_t *status = getBoardStatus();
+    if(status->wifi_scan_done == false) {
+        log_message(LOG_LEVEL_ERROR, TAG, "Cant get scan results, WiFi scan not done");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    uint16_t ap_num = 0;
+    esp_err_t err = esp_wifi_scan_get_ap_num(&ap_num);
+    if(err != ESP_OK) {
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to get number of scanned APs: %s", esp_err_to_name(err));
+        return err;
+    }
+    if(ap_num > WIFI_SCAN_MAX_AP) ap_num = WIFI_SCAN_MAX_AP; // Limit to max we can store
+
+    wifi_ap_record_t ap_records[WIFI_SCAN_MAX_AP];
+    err = esp_wifi_scan_get_ap_records(&ap_num, ap_records);
+    if(err != ESP_OK) {
+        log_message(LOG_LEVEL_ERROR, TAG, "Failed to get scanned AP records: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    out_results->ap_num = ap_num;
+    for(int i = 0; i < ap_num; i++) {
+        memcpy(out_results->results[i].bssid, ap_records[i].bssid, 6);
+        memcpy(out_results->results[i].ssid, ap_records[i].ssid, 33);
+        out_results->results[i].primary_channel = ap_records[i].primary;
+        out_results->results[i].secondary_channel = ap_records[i].second;
+        out_results->results[i].rssi = ap_records[i].rssi;
+        out_results->results[i].authmode = ap_records[i].authmode;
+        out_results->results[i].pairwise_cipher = ap_records[i].pairwise_cipher;
+        out_results->results[i].group_cipher = ap_records[i].group_cipher;
+        out_results->results[i].ant = ap_records[i].ant;
+        out_results->results[i].phy_11b = ap_records[i].phy_11b;
+        out_results->results[i].phy_11g = ap_records[i].phy_11g;
+        out_results->results[i].phy_11n = ap_records[i].phy_11n;
+        out_results->results[i].phy_lr = ap_records[i].phy_lr;
+        out_results->results[i].phy_11a = ap_records[i].phy_11a;
+        out_results->results[i].phy_11ac = ap_records[i].phy_11ac;
+        out_results->results[i].phy_11ax = ap_records[i].phy_11ax;
+        out_results->results[i].wps = ap_records[i].wps;
+        out_results->results[i].ftm_responder = ap_records[i].ftm_responder;
+        out_results->results[i].ftm_initiator = ap_records[i].ftm_initiator;
+        memcpy(out_results->results[i].country_code, ap_records[i].country.cc, 3);
+        out_results->results[i].schan = ap_records[i].country.schan;
+        out_results->results[i].nchan = ap_records[i].country.nchan;
+        out_results->results[i].max_tx_power = ap_records[i].country.max_tx_power;
+        out_results->results[i].policy = ap_records[i].country.policy;
+        #if CONFIG_SOC_WIFI_SUPPORT_5G
+        out_results->results[i].wifi_5g_channel_mask = ap_records[i].country.wifi_5g_channel_mask;
+        #endif
+        out_results->results[i].bss_color = ap_records[i].he_ap.bss_color;
+        out_results->results[i].partial_bss_color = ap_records[i].he_ap.partial_bss_color;
+        out_results->results[i].bss_color_disabled = ap_records[i].he_ap.bss_color_disabled;
+        out_results->results[i].bssid_index = ap_records[i].he_ap.bssid_index;
+        out_results->results[i].bandwidth = ap_records[i].bandwidth;
+        out_results->results[i].vht_ch_freq1 = ap_records[i].vht_ch_freq1;
+        out_results->results[i].vht_ch_freq2 = ap_records[i].vht_ch_freq2;
+    }
+
+    return err;
+}
+

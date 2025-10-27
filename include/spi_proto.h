@@ -12,22 +12,25 @@
 #include "board.h"
 
 typedef enum {
+    CMD_NOP = 0x00,
     /* MASTER to SLAVE*/
-    CMD_BOARD_STATUS = 0x01,
+    CMD_BOARD_STATUS,
+    CMD_BOARD_INFO,
     CMD_WIFI_CONFIG,
     CMD_WIFI_CHANNEL,
     CMD_WIFI_SCAN,
-    
+
     /* SLAVE to MASTER */
     CMD_BOARD_STATUS_RESPONSE,
+    CMD_BOARD_INFO_RESPONSE,
     CMD_WIFI_CONFIG_RESPONSE,
     CMD_WIFI_CHANNEL_RESPONSE,
-    CMD_WIFI_SCAN_RESULT,
+    CMD_WIFI_SCAN_RESPONSE,
+    CMD_WIFI_SCAN_RESULTS_RESPONSE,
 } proto_cmd_t;
 
 #define PROTO_MAX_PAYLOAD   (2048-sizeof(proto_header_t))
-#define FRAME_QUEUE_SIZE    8
-
+#define FRAME_QUEUE_SIZE    20
 
 /**
  * @brief base frame header structures
@@ -39,7 +42,6 @@ typedef struct __attribute((packed)) {
     uint16_t len;
 } proto_header_t;
 
-
 /**
  * @brief base frame structure
  */
@@ -47,7 +49,6 @@ typedef struct __attribute((packed)) {
     proto_header_t header;
     uint8_t payload[PROTO_MAX_PAYLOAD];
 } proto_frame_t;
-
 
 /**
  * @brief Command to get Slave board status
@@ -59,6 +60,20 @@ typedef struct __attribute((packed)) {
     } fields;
 } proto_board_status_t;
 
+/**
+ * @brief Command to get Slave board info
+ */
+typedef struct __attribute__((packed)) {
+    proto_header_t header;
+    struct __attribute__((packed)) {
+        uint8_t  chip_cores;
+        uint8_t  chip_model;
+        uint16_t  chip_revision;
+        uint32_t chip_features;
+        uint32_t total_internal_memory;
+        uint32_t spiram_size;
+    } fields;
+} proto_board_info_t;
 
 /**
  * @brief Command to set Slave wifi
@@ -73,7 +88,6 @@ typedef struct __attribute__((packed)) {
     } fields;
 } proto_wifi_config_t;
 
-
 /**
  * @brief Packet to set wifi channel
  */
@@ -85,24 +99,53 @@ typedef struct __attribute((packed)) {
     } fields;
 } proto_wifi_set_channel_t;
 
+/**
+ * @brief Packet to start wifi scan
+ */
+typedef struct __attribute((packed)) {
+    proto_header_t header;
+    struct __attribute__((packed)) {
+        scan_config_t scan_config;
+        int32_t status;
+    } fields;
+} proto_wifi_scan_t;
+
+/**
+ * @brief Packet to get wifi scan results
+ */
+typedef struct __attribute((packed)) {
+    proto_header_t header;
+    struct __attribute__((packed)) {
+        scan_results_t scan_results;
+        int32_t status;
+    } fields;
+} proto_wifi_scan_results_t;
 
 /**
  * @brief Initialize SPI bus and protocol Task
  */
 esp_err_t spi_proto_init(void);
 
-
 /**
  * @brief Add frame to queue
  * @param slave_addr Slave addres
  * @param frame Frame to send
  */
-esp_err_t proto_send_frame(int slave_addr, const void *frame);
+esp_err_t proto_send_frame(int slave_addr, void *frame);
 
-
+/**
+ * @brief Slave protocol task
+ */
 void proto_slave_task(void *arg);
 
+/**
+ * @brief Master protocol task
+ */
 void proto_master_task(void *arg);
 
+/**
+ * @brief Master protocol polling task
+ */
+void proto_master_polling_task(void *arg);
 
 #endif // SPI_PROTO_H

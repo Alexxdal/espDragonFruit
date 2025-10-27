@@ -21,7 +21,19 @@ static board_status_t board_status;
 static SemaphoreHandle_t board_status_mtx;
 
 #if defined(BOARD_MASTER)
-static board_status_t slave_status[3] = { 0 };
+    #if defined(HAS_PSRAM)
+    EXT_RAM_BSS_ATTR static board_status_t slave_status[SLAVE_NUM];
+    EXT_RAM_BSS_ATTR static scan_results_t slave_wifi_scan_results[SLAVE_NUM];
+    #else
+    static board_status_t slave_status[SLAVE_NUM] = { 0 };
+    static scan_results_t slave_wifi_scan_results[SLAVE_NUM] = { 0 };
+    #endif
+#endif
+
+#if defined(HAS_PSRAM)
+EXT_RAM_BSS_ATTR static scan_results_t current_board_wifi_scan_results;
+#else
+static scan_results_t current_board_wifi_scan_results = { 0 };
 #endif
 
 static void common_board_task(void *arg)
@@ -46,12 +58,12 @@ static void common_board_task(void *arg)
         set_board_status {
             board_status.free_internal_memory = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
 #if defined(BOARD_MASTER)
-esp_err_t master_init()
+static esp_err_t master_init()
 {
     esp_err_t err = ESP_OK;
 
@@ -74,8 +86,9 @@ esp_err_t master_init()
         .pmf_required = false,
         .pmf_capable = false
     };
+    sta_config_t wifi_config_sta = { 0 };
 
-    err = wifi_set_config(&wifi_config_ap, NULL, WIFI_MODE_AP);
+    err = wifi_set_config(&wifi_config_ap, &wifi_config_sta, WIFI_MODE_APSTA);
     ESP_RETURN_ON_ERROR(err, TAG, "wifi_set_config");
 
     err = httpd_server_start();
@@ -85,19 +98,19 @@ esp_err_t master_init()
     return err;
 }
 #elif defined(BOARD_SLAVE1)
-esp_err_t slave_one_init()
+static esp_err_t slave_one_init()
 {
     log_message(LOG_LEVEL_INFO, TAG, "Slave One board initialized.");
     return ESP_OK;
 }
 #elif defined(BOARD_SLAVE2)
-esp_err_t slave_two_init()
+static esp_err_t slave_two_init()
 {
     log_message(LOG_LEVEL_INFO, TAG, "Slave Two board initialized.");
     return ESP_OK;
 }
 #elif defined(BOARD_SLAVE3)
-esp_err_t slave_three_init()
+static esp_err_t slave_three_init()
 {
     log_message(LOG_LEVEL_INFO, TAG, "Slave Three board initialized.");
     return ESP_OK;
@@ -106,6 +119,8 @@ esp_err_t slave_three_init()
 
 esp_err_t board_init(void)
 {
+    log_init(LOG_LEVEL_DEBUG);
+
     memset(&board_status, 0, sizeof(board_status_t));
     board_status_mtx = xSemaphoreCreateMutex();
     if(board_status_mtx == NULL) {
@@ -144,18 +159,6 @@ board_status_t *getBoardStatus(void)
     return &board_status;
 }
 
-#if defined(BOARD_MASTER)
-board_status_t *getSlaveStatus(int addr)
-{
-    /* Slave address in frame is 1 index based */
-    addr--;
-
-    if(addr > 2 || addr < 0)
-        return NULL;
-    return &slave_status[addr];
-}
-#endif
-
 void board_status_lock(void) {
      xSemaphoreTake(board_status_mtx, portMAX_DELAY); 
 }
@@ -163,3 +166,44 @@ void board_status_lock(void) {
 void board_status_unlock(void) { 
     xSemaphoreGive(board_status_mtx); 
 }
+
+scan_results_t *getCurrentBoardWifiScanResults(void)
+{
+    return &current_board_wifi_scan_results;
+}
+
+esp_err_t setCurrentBoardWifiScanResults(scan_results_t *results)
+{
+    if(!results)
+        return ESP_ERR_INVALID_ARG;
+
+    memcpy(&current_board_wifi_scan_results, results, sizeof(scan_results_t));
+    return ESP_OK;
+}
+
+#if defined(BOARD_MASTER)
+board_status_t *getSlaveStatus(int addr)
+{
+    if(addr > (SLAVE_NUM-1) || addr < 0)
+        return NULL;
+
+    return &slave_status[addr];
+}
+
+scan_results_t *getSlaveWifiScanResults(int addr)
+{
+    if(addr > (SLAVE_NUM-1) || addr < 0)
+        return NULL;
+
+    return &slave_wifi_scan_results[addr];
+}
+
+esp_err_t setSlaveWifiScanResults(int addr, scan_results_t *results)
+{
+    if(addr > (SLAVE_NUM-1) || addr < 0)
+        return ESP_ERR_INVALID_ARG;
+
+    memcpy(&slave_wifi_scan_results[addr], results, sizeof(scan_results_t));
+    return ESP_OK;
+}
+#endif
