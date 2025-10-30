@@ -7,7 +7,6 @@ hint = env.GetProjectOption("custom_port_hint") or ""
 if not hint:
     raise SystemExit("Missing 'custom_port_hint' in platformio.ini")
 
-# Chiamata a `platformio device list --json-output`
 try:
     out = subprocess.check_output(
         ["platformio", "device", "list", "--json-output"],
@@ -29,9 +28,9 @@ for p in ports:
 if not chosen:
     print(f"Auto-port: no port found for hint '{hint}'. "
           f"Plug the CH348 and refresh.")
-    sys.exit(1)
-
-# Imposta per upload & monitor
-env.Replace(UPLOAD_PORT=chosen)
-env.Replace(MONITOR_PORT=chosen)
-print(f"Auto-port: {hint} -> {chosen}")
+    print(f"Continue the build but upload may fail..")
+else:
+    # Imposta per upload & monitor
+    env.Replace(UPLOAD_PORT=chosen)
+    env.Replace(MONITOR_PORT=chosen)
+    print(f"Auto-port: {hint} -> {chosen}")

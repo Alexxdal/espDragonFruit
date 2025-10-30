@@ -4,7 +4,7 @@
 #include "board.h"
 #include "spi_proto.h"
 #include "log.h"
-#include "cJSON.h"
+#include "jsonapi.h"
 
 static const char *TAG = "HTTPD";
 static httpd_handle_t server;
@@ -20,71 +20,14 @@ static const char* mime_from_path(const char* path) {
     return "text/plain";
 }
 
-static void add_board_status_json(cJSON *parent, const char *name, const board_status_t *st) {
-    if (!parent || !name) return;
-
-    if (!st) {
-        // Se non disponibile, metti null
-        cJSON_AddItemToObject(parent, name, cJSON_CreateNull());
-        return;
-    }
-
-    cJSON *o = cJSON_CreateObject();
-    cJSON_AddItemToObject(parent, name, o);
-    // Chip info
-    cJSON *chip = cJSON_CreateObject();
-    cJSON_AddItemToObject(o, "chip", chip);
-    cJSON_AddNumberToObject(chip, "model",   st->chip_model);     // vedi esp_chip_model_t
-    cJSON_AddNumberToObject(chip, "cores",   st->chip_cores);
-    cJSON_AddNumberToObject(chip, "revision",st->chip_revision);
-    cJSON_AddNumberToObject(chip, "features",st->chip_features);  // bitmask
-    // RAM
-    cJSON *ram = cJSON_CreateObject();
-    cJSON_AddItemToObject(o, "ram", ram);
-    cJSON_AddNumberToObject(ram, "total_internal",   st->total_internal_memory);
-    cJSON_AddNumberToObject(ram, "free_internal",    st->free_internal_memory);
-    cJSON_AddNumberToObject(ram, "largest_contig",   st->largest_contig_internal_block);
-    cJSON_AddNumberToObject(ram, "spiram_size",      (double)st->spiram_size);
-    // Module status
-    cJSON *m = cJSON_CreateObject();
-    cJSON_AddItemToObject(o, "modules", m);
-    cJSON_AddBoolToObject(m, "spi",       st->spi_status != 0);
-    cJSON_AddBoolToObject(m, "netif",     st->netif_status != 0);
-    cJSON_AddBoolToObject(m, "wifi_init", st->wifi_init != 0);
-    cJSON_AddBoolToObject(m, "wifi_started", st->wifi_started != 0);
-    cJSON_AddBoolToObject(m, "bluetooth", st->bluetooth_status != 0);
-    // Wi-Fi
-    cJSON *wifi = cJSON_CreateObject();
-    cJSON_AddItemToObject(o, "wifi", wifi);
-    cJSON_AddStringToObject(wifi, "ap_ssid",     (char*)st->wifi_config_ap.ssid);
-    cJSON_AddStringToObject(wifi, "ap_password", (char*)st->wifi_config_ap.password);
-    cJSON_AddNumberToObject(wifi, "ap_channel",  st->wifi_config_ap.channel);
-    cJSON_AddNumberToObject(wifi, "mode",        st->wifi_mode);
-}
 
 static esp_err_t status_get_handler(httpd_req_t *req)
 {
-    cJSON *root = cJSON_CreateObject();
-
-    #if defined(BOARD_MASTER)
-    board_status_t *master = getBoardStatus();
-    board_status_t *slave1 = getSlaveStatus(ESPWROOM32);
-    board_status_t *slave2 = getSlaveStatus(ESP32C5);
-    board_status_t *slave3 = getSlaveStatus(ESP32S3);
-    add_board_status_json(root, "master", master);
-    add_board_status_json(root, "slave1", slave1);
-    add_board_status_json(root, "slave2", slave2);
-    add_board_status_json(root, "slave3", slave3);
-    #endif
-
-    // Serializza (senza spazi)
-    char *json = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
+    char *json = json_get_board_status();
     if (!json) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "cJSON print failed");
         return ESP_OK;
     }
-
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin",  "*");
     httpd_resp_set_type(req, "application/json");
     esp_err_t r = httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
@@ -131,6 +74,10 @@ static esp_err_t file_get_handler(httpd_req_t *req)
 
 esp_err_t httpd_server_start(void) 
 {
+    if(server != NULL) {
+        log_message(LOG_LEVEL_DEBUG, TAG, "httpd server already started.");
+        return ESP_ERR_INVALID_STATE;
+    }
     esp_err_t err = ESP_OK;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
@@ -147,7 +94,17 @@ esp_err_t httpd_server_start(void)
         if(err != ESP_OK)
             return err;
 
-        log_message(LOG_LEVEL_INFO, TAG, "httpd server started");
+        log_message(LOG_LEVEL_INFO, TAG, "httpd server started.");
     }
     return err;
+}
+
+esp_err_t httpd_server_stop(void)
+{
+    if(server == NULL)
+    {
+        log_message(LOG_LEVEL_DEBUG, TAG, "httpd server not started.");
+        return ESP_ERR_INVALID_ARG;
+    }
+    return httpd_stop(&server);
 }
