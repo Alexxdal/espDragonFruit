@@ -1,7 +1,6 @@
-'use client';
-
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
+import { Slot as RadixSlot } from '@radix-ui/react-slot';
+const Slot: any = RadixSlot;
 import { cva, type VariantProps } from 'class-variance-authority';
 import { PanelLeftIcon } from 'lucide-react';
 
@@ -11,8 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
-  Sheet,
-  SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle
@@ -28,7 +25,6 @@ import {
 const SIDEBAR_COOKIE_NAME = 'sidebar_state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '16rem';
-const SIDEBAR_WIDTH_MOBILE = '18rem';
 const SIDEBAR_WIDTH_ICON = '3rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
 
@@ -90,7 +86,9 @@ function SidebarProvider({
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
+    return isMobile
+      ? setOpenMobile((open: any) => !open)
+      : setOpen((open: any) => !open);
   }, [isMobile, setOpen, setOpenMobile]);
 
   // Adds a keyboard shortcut to toggle the sidebar.
@@ -131,13 +129,13 @@ function SidebarProvider({
       <TooltipProvider delayDuration={0}>
         <div
           data-slot='sidebar-wrapper'
-          style={
+          style={Object.assign(
             {
               '--sidebar-width': SIDEBAR_WIDTH,
-              '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
-              ...style
-            } as React.CSSProperties
-          }
+              '--sidebar-width-icon': SIDEBAR_WIDTH_ICON
+            } as React.CSSProperties,
+            style
+          )}
           className={cn(
             'group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full',
             className
@@ -182,26 +180,35 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetContent
-          data-sidebar='sidebar'
-          data-slot='sidebar'
-          data-mobile='true'
-          className='bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden'
-          style={
-            {
-              '--sidebar-width': SIDEBAR_WIDTH_MOBILE
-            } as React.CSSProperties
-          }
-          side={side}
+      <>
+        {/* Overlay */}
+        {openMobile && (
+          <div
+            className='fixed inset-0 z-40 bg-black/50'
+            onClick={() => setOpenMobile(false)}
+          />
+        )}
+
+        {/* Sidebar content */}
+        <div
+          className={`fixed inset-y-0 ${
+            side === 'right' ? 'right-0' : 'left-0'
+          } z-50 h-full w-3/4 max-w-sm bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-450 ease-in-out
+        ${openMobile ? 'translate-x-0' : side === 'right' ? 'translate-x-full' : '-translate-x-full'}`}
         >
-          <SheetHeader className='sr-only'>
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-          </SheetHeader>
-          <div className='flex h-full w-full flex-col'>{children}</div>
-        </SheetContent>
-      </Sheet>
+          <div className='relative flex h-full w-full flex-col'>
+            <div className='sr-only'>
+              <SheetHeader>
+                <SheetTitle>Sidebar</SheetTitle>
+                <SheetDescription>
+                  Displays the mobile sidebar.
+                </SheetDescription>
+              </SheetHeader>
+            </div>
+            <div className='flex h-full w-full flex-col'>{children}</div>
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -267,7 +274,7 @@ function SidebarTrigger({
       variant='ghost'
       size='icon'
       className={cn('size-7', className)}
-      onClick={(event) => {
+      onClick={(event: any) => {
         onClick?.(event);
         toggleSidebar();
       }}

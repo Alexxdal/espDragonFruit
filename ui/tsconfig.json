@@ -2,10 +2,13 @@
   "include": ["**/*.ts", "**/*.tsx"],
   "compilerOptions": {
     "target": "ES2022",
-    "jsx": "react-jsx",
     "module": "ESNext",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
+
+    /* JSX for Preact */
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -13,16 +16,20 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
 
-    /* Linting */
+    /* Linting / strictness */
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
+
+    /* Path aliases */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "react": ["./node_modules/preact/compat"],
+      "react-dom": ["./node_modules/preact/compat"]
     }
   }
 }
