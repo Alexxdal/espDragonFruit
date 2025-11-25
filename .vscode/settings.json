@@ -30,6 +30,7 @@
         "commandmng.h": "c",
         "compare": "c",
         "numbers": "c",
-        "random": "c"
+        "random": "c",
+        "jsonapi.h": "c"
     }
 }

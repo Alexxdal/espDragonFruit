@@ -155,6 +155,7 @@ esp_err_t wifi_scan(scan_config_t *scan_config);
 /**
  * @brief Get Wifi Scan Results
  * @param out_results Pointer to store scan results - scan_results_t
+ * @note Dont call this function to get scan result this is called internally
  */
 esp_err_t wifi_scan_get_results(scan_results_t *out_results);
 

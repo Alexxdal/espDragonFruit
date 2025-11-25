@@ -45,8 +45,8 @@ void app_main()
         .scan_method = WIFI_FAST_SCAN
     };
     CommandSetWifiConfig(ESPWROOM32, NULL, &sta_config, WIFI_MODE_STA);
-    CommandSetWifiConfig(ESP32S3, NULL, &sta_config, WIFI_MODE_STA);
     CommandSetWifiConfig(ESP32C5, NULL, &sta_config, WIFI_MODE_STA);
+    CommandSetWifiConfig(ESP32S3, NULL, &sta_config, WIFI_MODE_STA);
     scan_config_t scan_config = {
         .channel = 0,
         .show_hidden = 1,
@@ -54,10 +54,7 @@ void app_main()
         .scan_time = 120,
     };
     vTaskDelay(pdMS_TO_TICKS(2000)); // Wait for wifi to be ready
-    CommandWifiScan(ESP32C5, &scan_config);
-    CommandWifiScan(ESP32S3, &scan_config);
     CommandWifiScan(ESPWROOM32, &scan_config);
-    wifi_scan(NULL);
     #endif
 
     while (1)

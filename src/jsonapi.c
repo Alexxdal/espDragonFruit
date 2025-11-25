@@ -55,8 +55,8 @@ char *json_get_board_status(void)
     board_status_t *slave = getBoardStatus();
     add_board_status_json(root, "slave1", slave);
     #elif defined(BOARD_SLAVE2)
-    board_status_t *slave1 = getBoardStatus();
-    add_board_status_json(root, "slave1", slave);
+    board_status_t *slave = getBoardStatus();
+    add_board_status_json(root, "slave2", slave);
     #elif defined(BOARD_SLAVE3)
     board_status_t *slave = getBoardStatus();
     add_board_status_json(root, "slave3", slave);
